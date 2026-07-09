@@ -1,0 +1,77 @@
+{
+  "summary": {
+    "total": 4,
+    "ACCEPTED": 2,
+    "PARTIALLY_ACCEPTED": 0,
+    "REJECTED": 2,
+    "ERROR": 0
+  },
+  "results": [
+    {
+      "classification": "ACCEPTED",
+      "draft_position": "The draft regulation did not explicitly account for the weighted average price across all power exchanges for merchant generators selling through multiple exchanges or traders.",
+      "requested_change": "The stakeholder requested that the regulation be modified to account for the weighted average price across all power exchanges and to clarify how sales through traders or bilateral arrangements would be incorporated into this calculation.",
+      "final_position": "The final regulation includes provisions for the weighted average ACP of all Power Exchanges for the respective time block and for the weighted average of contract rates of all contracts or transactions.",
+      "implemented_requests": [
+        "Weighted average price calculation across all power exchanges",
+        "Incorporation of sales through traders or bilateral arrangements into the weighted average price"
+      ],
+      "not_implemented_requests": [],
+      "reasoning": "The final regulation directly addresses both of the stakeholder's requests, providing for the use of a weighted average price and clarifying the incorporation of various sales into this calculation.",
+      "evidence_in_final": "(iii) in respect of a WS seller or a MSW seller or such other entity as applicable, selling power through open access to a third party or in case of captive consumption of a captive generating plant based on renewable energy sources, the weighted average ACP of the Integrated-Day Ahead Market segments of all Power Exchanges for the respective time block; (iv) in case of multiple contracts or transactions including captive consumption, the weighted average of the reference rates of all such contracts or transactions;",
+      "comment_number": 1,
+      "comment_title": "Contract Rate: In the proposed clause K(ii A merchant generator may sell electricity through multiple power exchanges as",
+      "file_set": "comments"
+    },
+    {
+      "classification": "REJECTED",
+      "draft_position": "The draft regulation does not explicitly provide the definition of Contract Rate (RR) as requested by the comment.",
+      "requested_change": "Addition of a word to the definition of Contract Rate (RR) for better clarification.",
+      "final_position": "The final regulation provides detailed definitions of Reference Charge Rate and Contract rate but does not directly address the comment's specific request.",
+      "implemented_requests": [],
+      "not_implemented_requests": [
+        "Addition of a word to the definition of Contract Rate (RR) for better clarification."
+      ],
+      "reasoning": "The final regulation does not provide direct evidence that the specific requested change was implemented.",
+      "evidence_in_final": "Not found in final regulation",
+      "comment_number": 2,
+      "comment_title": "Correction in the definition of Contract Rate (RR): In the proposed clause K(iv",
+      "file_set": "comments"
+    },
+    {
+      "classification": "ACCEPTED",
+      "draft_position": "The draft regulation does not explicitly provide for the appropriation of deviation charges across inter-state and intra-state transactions in cases of multiple contracts or transactions.",
+      "requested_change": "The stakeholder requests that the regulation should provide for the appropriation of deviation charges across inter-state and intra-state transactions, especially in cases of multiple contracts or transactions through a single meter.",
+      "final_position": "The final regulation includes provisions for the appropriation of deviation charges in cases of multiple contracts or transactions, including captive consumption, through the calculation of weighted averages of reference rates or contract rates.",
+      "implemented_requests": [
+        "Appropriation of deviation charges for multiple contracts or transactions"
+      ],
+      "not_implemented_requests": [],
+      "reasoning": "The final regulation directly addresses the stakeholder's request by including clauses that provide for the appropriation of deviation charges in cases of multiple contracts or transactions.",
+      "evidence_in_final": "(iv) in case of multiple contracts or transactions including captive consumption, the weighted average of the reference rates of all such contracts or transactions; (iv) in case of multiple contracts or transactions including captive consumption, the weighted average of the contract rates of all such contracts or transactions, as the case may be;",
+      "comment_number": 3,
+      "comment_title": "Settling Multiple Contracts through a Single Meter: The evolving nature of the power",
+      "file_set": "comments"
+    },
+    {
+      "classification": "REJECTED",
+      "draft_position": "The draft regulation does not explicitly address the stakeholder's requests.",
+      "requested_change": "The stakeholder requested several changes including phased alignment with CERC's DSM framework, removal of under-drawal incentives above 50.09 Hz, alignment of over-drawal penalties with CERC's framework, reduction of under-drawal DSM penalties, introduction of a counterbalancing incentive for under-drawal when frequency overshoots 50 Hz, and enhancement of transparency.",
+      "final_position": "The final regulation introduces new charges for deviations based on frequency but does not directly address all the stakeholder's requests as described.",
+      "implemented_requests": [],
+      "not_implemented_requests": [
+        "Phased alignment with CERC's DSM framework",
+        "Removal of under-drawal incentives above 50.09 Hz",
+        "Alignment of over-drawal penalties with CERC's framework",
+        "Reduction of under-drawal DSM penalties",
+        "Introduction of a counterbalancing incentive for under-drawal when frequency overshoots 50 Hz",
+        "Enhancement of transparency through real-time monitoring dashboards and regular deviation reports"
+      ],
+      "reasoning": "The final regulation does not provide direct evidence of implementing the stakeholder's specific requests as outlined in the comment.",
+      "evidence_in_final": "Not found in final regulation",
+      "comment_number": 4,
+      "comment_title": "HPERC DSM Proposal for Buyer",
+      "file_set": "comments"
+    }
+  ]
+}

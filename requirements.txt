@@ -1,0 +1,10 @@
+PyMuPDF
+pdfplumber
+rank-bm25
+pandas
+openpyxl
+python-dotenv
+requests
+groq
+langdetect
+numpy

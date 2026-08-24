@@ -1,77 +1,64 @@
 {
-  "summary": {
-    "total": 4,
-    "ACCEPTED": 2,
-    "PARTIALLY_ACCEPTED": 0,
-    "REJECTED": 2,
-    "ERROR": 0
+  "metadata": {
+    "comments_file": "comments.pdf",
+    "final_file": "final.pdf",
+    "draft_file": "draft.pdf",
+    "total_comments": 5,
+    "accepted": 2,
+    "partially_accepted": 2,
+    "rejected": 1,
+    "overall_acceptance_rate": "60%"
   },
-  "results": [
+  "evaluations": [
     {
-      "classification": "ACCEPTED",
-      "draft_position": "The draft regulation did not explicitly account for the weighted average price across all power exchanges for merchant generators selling through multiple exchanges or traders.",
-      "requested_change": "The stakeholder requested that the regulation be modified to account for the weighted average price across all power exchanges and to clarify how sales through traders or bilateral arrangements would be incorporated into this calculation.",
-      "final_position": "The final regulation includes provisions for the weighted average ACP of all Power Exchanges for the respective time block and for the weighted average of contract rates of all contracts or transactions.",
-      "implemented_requests": [
-        "Weighted average price calculation across all power exchanges",
-        "Incorporation of sales through traders or bilateral arrangements into the weighted average price"
-      ],
-      "not_implemented_requests": [],
-      "reasoning": "The final regulation directly addresses both of the stakeholder's requests, providing for the use of a weighted average price and clarifying the incorporation of various sales into this calculation.",
-      "evidence_in_final": "(iii) in respect of a WS seller or a MSW seller or such other entity as applicable, selling power through open access to a third party or in case of captive consumption of a captive generating plant based on renewable energy sources, the weighted average ACP of the Integrated-Day Ahead Market segments of all Power Exchanges for the respective time block; (iv) in case of multiple contracts or transactions including captive consumption, the weighted average of the reference rates of all such contracts or transactions;",
       "comment_number": 1,
-      "comment_title": "Contract Rate: In the proposed clause K(ii A merchant generator may sell electricity through multiple power exchanges as",
-      "file_set": "comments"
+      "title": "HPERC (Deviation Settlement Mechanism and Related Matters) ",
+      "clause_id": "Regulations 2, 3, and 4 of the Final Regulations",
+      "issue_flagged": "Summary of draft regulation's objective and key highlights",
+      "exact_quote_from_comment": "The amendment to the Principal Regulations substitutes the definitions of Contract Rate and Reference Charge Rate under Regulation 2, updates the key design parameters by aligning them with the CERC (Deviation Settlement Mechanism and Related Matters) Regulations, 2024, and revises Charges for Deviation under Regulation 7 for general seller, RoR generating station, and Buyer, incorporating slabs linked to system frequency, f band, Declared Generation Schedule (DGS), Declared Buyer Schedule (DBUY), and Volume Limits, to promote grid security, commercial discipline, and responsible scheduling.",
+      "exact_quote_from_final_gazette": "2. Amendment of Regulation 2.- In Regulation 2 of the Himachal Pradesh Electricity Regulatory Commission (Deviation Settlement Mechanism and Related Matters) Regulations, 2024 (hereinafter referred to as the Principal Regulations), in sub-regulation (1),- (i) for clause (k) , the following clause shall be substituted, namely:- “(k) ‘Contract rate’ means,-...\n3. Amendment of Regulation 5.- In Regulation 5 of the Principal Regulations, in key design parameter (I), for the letters, words, signs and figures “CERC (Deviation Settlement Mechanism and Related Matters) Regulations, 2022”, the letters, words, signs and figures “CERC (Deviation Settlement Mechanism and Related Matters) Regulations, 2024” shall be substituted.\n4. Amendment of Regulation 7.- In Regulation 7 of the Principal Regulations, for sub-regulations (1), (2) and (3), the following sub-regulations shall be substituted, namely:- “(1) Charges for Deviation, in respect of a general seller (other than an RoR generating station) shall be as under:- ... (2) Charges for Deviation, in respect of a general seller being a RoR generating station, shall be without any linkage to grid frequency, as under:- ... Note: System frequency= f and f band =[49.90Hz< f < 50.05Hz]",
+      "classification_status": "ACCEPTED",
+      "determinism_proof": "The comment describes the objective of the draft amendment, stating it 'substitutes the definitions of Contract Rate and Reference Charge Rate under Regulation 2', 'updates the key design parameters by aligning them with the CERC (Deviation Settlement Mechanism and Related Matters) Regulations, 2024', and 'revises Charges for Deviation under Regulation 7 for general seller, RoR generating station, and Buyer, incorporating slabs linked to system frequency, f band, Declared Generation Schedule (DGS), Declared Buyer Schedule (DBUY), and Volume Limits'. The final regulation explicitly amends Regulation 2 to substitute the definition of 'Contract rate', amends Regulation 5 to align key design parameters with CERC 2024 regulations, and amends Regulation 7 to revise deviation charges for general sellers and RoR generating stations, incorporating frequency bands and DGS/volume limits. All key aspects of the stated objective are found to be implemented in the final text. Therefore, logic dictates ACCEPTED."
     },
     {
-      "classification": "REJECTED",
-      "draft_position": "The draft regulation does not explicitly provide the definition of Contract Rate (RR) as requested by the comment.",
-      "requested_change": "Addition of a word to the definition of Contract Rate (RR) for better clarification.",
-      "final_position": "The final regulation provides detailed definitions of Reference Charge Rate and Contract rate but does not directly address the comment's specific request.",
-      "implemented_requests": [],
-      "not_implemented_requests": [
-        "Addition of a word to the definition of Contract Rate (RR) for better clarification."
-      ],
-      "reasoning": "The final regulation does not provide direct evidence that the specific requested change was implemented.",
-      "evidence_in_final": "Not found in final regulation",
       "comment_number": 2,
-      "comment_title": "Correction in the definition of Contract Rate (RR): In the proposed clause K(iv",
-      "file_set": "comments"
+      "title": "1. Contract Rate: In the proposed clause K(ii) “in respect of a WS seller or a MSW Seller or ",
+      "clause_id": "Regulation 2(1)(k)(iii) and Regulation 2(1)(k)(iv)",
+      "issue_flagged": "Weighted average price for merchant generators across multiple exchanges/contracts",
+      "exact_quote_from_comment": "A merchant generator may sell electricity through multiple power exchanges as well as through multiple contracts, as well as through traders. Would the price discovered for the ‘respective’ trade at which a merchant generator sells electricity through power exchanges for the ‘respective transaction’ be considered? The above clause should be modified to account for weighted average price across all the products across all the power exchanges. Since discovered prices vary across the exchanges, for the same time block, would weight average price across exchanges be used? ... A merchant generator may sell all of its capacity under short-term contract through traders, or other bilateral arrangements (for example directly to open access consumers). How would such information be collected and incorporated in the weighted average price?",
+      "exact_quote_from_final_gazette": "(iii) in respect of a WS seller or a MSW seller or such other entity as applicable, selling power through open access to a third party or in case of captive consumption of a captive generating plant based on renewable energy sources, the weighted average ACP of the Integrated-Day Ahead Market segments of all Power Exchanges for the respective time block; or\n(iv) in case of multiple contracts or transactions including captive consumption, the weighted average of the contract rates of all such contracts or transactions, as the case may be;",
+      "classification_status": "PARTIALLY ACCEPTED",
+      "determinism_proof": "Draft line states: 'in respect of a WS seller or a MSW Seller or such other entity as applicable, whose tariff is not determined or adopted or approved under Section 62 or Section 63 or Section 86(1)(b) of the Act, and selling power through power exchange(s), the price as discovered in the Power Exchange for the respective transaction;'. Comment requested: Modification of this clause to account for 'weighted average price across all the products across all the power exchanges' and to incorporate sales through 'multiple contracts, as well as through traders' and 'other bilateral arrangements (for example directly to open access consumers)' into a weighted average price. Final line states: Clause (k)(ii) remains unchanged, referring to 'price as discovered in the Power Exchange for the respective transaction'. However, new clause (k)(iii) introduces 'the weighted average ACP of the Integrated-Day Ahead Market segments of all Power Exchanges for the respective time block' for open access/captive consumption, and new clause (k)(iv) introduces 'the weighted average of the contract rates of all such contracts or transactions' for 'multiple contracts or transactions including captive consumption'. Therefore, logic dictates PARTIALLY ACCEPTED, as the concept of weighted average for multiple contracts/transactions and open access was adopted, but not for direct sales through power exchanges as originally proposed for clause (k)(ii)."
     },
     {
-      "classification": "ACCEPTED",
-      "draft_position": "The draft regulation does not explicitly provide for the appropriation of deviation charges across inter-state and intra-state transactions in cases of multiple contracts or transactions.",
-      "requested_change": "The stakeholder requests that the regulation should provide for the appropriation of deviation charges across inter-state and intra-state transactions, especially in cases of multiple contracts or transactions through a single meter.",
-      "final_position": "The final regulation includes provisions for the appropriation of deviation charges in cases of multiple contracts or transactions, including captive consumption, through the calculation of weighted averages of reference rates or contract rates.",
-      "implemented_requests": [
-        "Appropriation of deviation charges for multiple contracts or transactions"
-      ],
-      "not_implemented_requests": [],
-      "reasoning": "The final regulation directly addresses the stakeholder's request by including clauses that provide for the appropriation of deviation charges in cases of multiple contracts or transactions.",
-      "evidence_in_final": "(iv) in case of multiple contracts or transactions including captive consumption, the weighted average of the reference rates of all such contracts or transactions; (iv) in case of multiple contracts or transactions including captive consumption, the weighted average of the contract rates of all such contracts or transactions, as the case may be;",
       "comment_number": 3,
-      "comment_title": "Settling Multiple Contracts through a Single Meter: The evolving nature of the power",
-      "file_set": "comments"
+      "title": "2. Correction  in  the  definition  of Contract Rate  (RR): In  the  proposed  clause K(iv) “in ",
+      "clause_id": "Regulation 2(1)(k)(iv)",
+      "issue_flagged": "Add 'Multiple exchanges' to Contract Rate definition K(iv)",
+      "exact_quote_from_comment": "2. Correction in the definition of Contract Rate (RR): In the proposed clause K(iv) “in case of multiple contracts or transactions including captive consumption, the weighted average of the contract rates of all such contracts or transactions, as the case may be;” It is suggested to the commission to consider the following definition “In case of multiple contracts or transactions & Multiple exchanges including captive consumption, the weighted average of the contract rates of all such contracts or transactions, as the case may be;” It is recommended to add this word “Multiple exchanges” for better clarification. the suggested change would more accurately reflect the practical scenarios where entities participate across different power exchanges.",
+      "exact_quote_from_final_gazette": "in case of multiple contracts or transactions including captive consumption, the weighted average of the contract rates of all such contracts or transactions;",
+      "classification_status": "REJECTED",
+      "determinism_proof": "Draft line states: '...in case of multiple contracts or transactions including captive consumption, the weighted average of the contract rates of all such contracts or transactions, as the case may be;'. Comment requested: '...In case of multiple contracts or transactions & Multiple exchanges including captive consumption, the weighted average of the contract rates of all such contracts or transactions, as the case may be;'. Final line states: '...in case of multiple contracts or transactions including captive consumption, the weighted average of the contract rates of all such contracts or transactions;'. The specific phrase 'Multiple exchanges' was not added to clause (k)(iv) as requested. Therefore, logic dictates REJECTED."
     },
     {
-      "classification": "REJECTED",
-      "draft_position": "The draft regulation does not explicitly address the stakeholder's requests.",
-      "requested_change": "The stakeholder requested several changes including phased alignment with CERC's DSM framework, removal of under-drawal incentives above 50.09 Hz, alignment of over-drawal penalties with CERC's framework, reduction of under-drawal DSM penalties, introduction of a counterbalancing incentive for under-drawal when frequency overshoots 50 Hz, and enhancement of transparency.",
-      "final_position": "The final regulation introduces new charges for deviations based on frequency but does not directly address all the stakeholder's requests as described.",
-      "implemented_requests": [],
-      "not_implemented_requests": [
-        "Phased alignment with CERC's DSM framework",
-        "Removal of under-drawal incentives above 50.09 Hz",
-        "Alignment of over-drawal penalties with CERC's framework",
-        "Reduction of under-drawal DSM penalties",
-        "Introduction of a counterbalancing incentive for under-drawal when frequency overshoots 50 Hz",
-        "Enhancement of transparency through real-time monitoring dashboards and regular deviation reports"
-      ],
-      "reasoning": "The final regulation does not provide direct evidence of implementing the stakeholder's specific requests as outlined in the comment.",
-      "evidence_in_final": "Not found in final regulation",
       "comment_number": 4,
-      "comment_title": "HPERC DSM Proposal for Buyer",
-      "file_set": "comments"
+      "title": "3. Settling Multiple Contracts through a Single Meter: The evolving nature of the power ",
+      "clause_id": "Regulation 2(1)(k)(iv) and 2(1)(x)(iv)",
+      "issue_flagged": "Mechanism for settling multiple contracts through a single meter using weighted average",
+      "exact_quote_from_comment": "The regulations should provide for ‘appropriation’ of deviation across the inter-state and intra-state transaction.",
+      "exact_quote_from_final_gazette": "in case of multiple contracts or transactions including captive consumption, the weighted average of the contract rates of all such contracts or transactions, as the case may be;” and “in case of multiple contracts or transactions including captive consumption, the weighted average of the reference rates of all such contracts or transactions;",
+      "classification_status": "ACCEPTED",
+      "determinism_proof": "Draft line states: '...'. Comment requested: 'The regulations should provide for ‘appropriation’ of deviation across the inter-state and intra-state transaction.' Final line states: 'in case of multiple contracts or transactions including captive consumption, the weighted average of the contract rates of all such contracts or transactions, as the case may be;' and 'in case of multiple contracts or transactions including captive consumption, the weighted average of the reference rates of all such contracts or transactions;'. Therefore, logic dictates ACCEPTED, as the final regulation explicitly provides a mechanism (weighted average) for handling multiple contracts, which addresses the stakeholder's request for appropriation of deviation across different types of transactions."
+    },
+    {
+      "comment_number": 5,
+      "title": "4. HPERC DSM Proposal for Buyer ",
+      "clause_id": "3. Amendment of Regulation 5; Regulation 5, sub-regulation (3)",
+      "issue_flagged": "Align DSM with CERC, remove under-drawl incentives, align over-drawl penalties, enhance transparency.",
+      "exact_quote_from_comment": "4. HPERC DSM proposal should adopt a phased alignment with CERC’s DSM framework over 2-3 years to ensure smooth transition and national consistency. Under-drawl incentives above 50.09 Hz should be removed to prevent grid instability, while over-drawl penalties during high-frequency periods (above 50 Hz) should be aligned with that under CERC’s framework. Similarly, significant higher under-drawl DSM penalty, in certain cases nearly 100% higher than that under the CERC framework (See Figure 3), presents significantly higher deviation arbitrage. No buyer under-drawl penalty above 50 Hz (Figure 4) also does not hove well for the grid discipline as there is no counterbalancing incentive to stabilise the grid if frequency overshoots 50 Hz. Finally, enhancing transparency through real-time monitoring dashboards and regular deviation reports will improve accountability and effectiveness. Overall, gradual convergence with inter-state regulations will obviate arbitrage opportunity while still strengthening grid discipline.",
+      "exact_quote_from_final_gazette": "3. Amendment of Regulation 5.- In Regulation 5 of the Principal Regulations, in key design parameter (I), for the letters, words, signs and figures “CERC (Deviation Settlement Mechanism and Related Matters) Regulations, 2022”, the letters, words, signs and figures “CERC (Deviation Settlement Mechanism and Related Matters) Regulations, 2024” shall be substituted. (3) Charges for Deviation, in respect of a Buyer, shall be receivable or payable as under:- Deviation by way of under drawl (Receivable by the Buyer) ... (VI) For VLB (1) and f outside f band (i) @ Zero when [50.05 Hz <f<50. 10 Hz]: Provided that such buyer shall pay @ 10% of NR when [f >50.10Hz] ... Deviation by way of over drawl (Payable by the Buyer) ... (v) When 50.00 Hz <f<50.05Hz for every increase in f by 0.01 Hz, charges for deviation for such buyer shall be decreased by 5% of NR so that charges for deviation become 75% of NR when f= 50.05 Hz;",
+      "classification_status": "PARTIALLY ACCEPTED",
+      "determinism_proof": "Draft line states: 'the Commission, in order to align its Principal Regulations with the CERC (Deviation Settlement Mechanism and Related Matters) Regulations, 2024, proposes further to amend the Principal Regulations;'. Comment requested: 'HPERC DSM proposal should adopt a phased alignment with CERC’s DSM framework over 2-3 years... Under-drawl incentives above 50.09 Hz should be removed... over-drawl penalties during high-frequency periods (above 50 Hz) should be aligned with that under CERC’s framework... No buyer under-drawl penalty above 50 Hz... enhancing transparency through real-time monitoring dashboards and regular deviation reports...'. Final line states: '3. Amendment of Regulation 5.- ... “CERC (Deviation Settlement Mechanism and Related Matters) Regulations, 2024” shall be substituted.' and '(3) Charges for Deviation, in respect of a Buyer, shall be receivable or payable as under:- ... (VI) For VLB (1) and f outside f band (i) @ Zero when [50.05 Hz <f<50. 10 Hz]: Provided that such buyer shall pay @ 10% of NR when [f >50.10Hz]' and '(v) When 50.00 Hz <f<50.05Hz for every increase in f by 0.01 Hz, charges for deviation for such buyer shall be decreased by 5% of NR so that charges for deviation become 75% of NR when f= 50.05 Hz;'. The final regulation adopts immediate alignment with CERC 2024 (rejecting phased approach), removes under-drawl incentives above 50.05 Hz and introduces a penalty above 50.10 Hz, and defines over-drawl penalties for high-frequency periods (aiming for CERC alignment, though exact numerical match cannot be verified). However, the request for real-time monitoring dashboards and reports is not adopted. Therefore, logic dictates PARTIALLY ACCEPTED."
     }
   ]
 }

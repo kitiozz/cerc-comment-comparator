@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   AlertCircle,
   XCircle,
-  FileText
+  FileText,
+  UploadCloud
 } from 'lucide-react';
 import { Header } from './components/Header';
 import { SummaryCards } from './components/SummaryCards';
@@ -40,6 +41,7 @@ export default function App() {
   const [selectedModalResult, setSelectedModalResult] = useState<CommentAnalysisResult | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState<{ current: number; total: number; title: string } | null>(null);
 
   // Evidence citation focus state for DocumentViewer
   const [highlightParagraphIndex, setHighlightParagraphIndex] = useState<number | null>(null);
@@ -111,16 +113,26 @@ export default function App() {
     comments: ParsedComment[],
     draftText: string,
     finalText: string,
-    datasetTitle: string
+    datasetTitle: string,
+    draftFileName = 'draft.pdf',
+    finalFileName = 'final.pdf'
   ) => {
     setIsAnalyzing(true);
+    setAnalysisProgress({ current: 0, total: comments.length, title: 'Preparing evaluation...' });
     try {
       const results: CommentAnalysisResult[] = [];
       const finalParagraphs = finalText
         ? finalText.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
         : activeDataset.finalDoc.paragraphs;
 
-      for (const comment of comments) {
+      for (let i = 0; i < comments.length; i++) {
+        const comment = comments[i];
+        setAnalysisProgress({
+          current: i + 1,
+          total: comments.length,
+          title: comment.title || `Comment #${comment.number}`,
+        });
+
         const res = await fetch('/api/analyze-comment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -144,18 +156,18 @@ export default function App() {
       const newDataset: ComparisonDataset = {
         id: newDatasetId,
         name: datasetTitle,
-        description: `User-analyzed dataset with ${comments.length} stakeholder comments.`,
+        description: `Custom consultation: ${comments.length} stakeholder comments compared against ${finalFileName}.`,
         draftDoc: {
           id: `draft-${newDatasetId}`,
           title: `${datasetTitle} (Draft)`,
-          fileName: 'custom_draft.pdf',
-          paragraphs: draftText ? draftText.split('\n\n').filter(Boolean) : activeDataset.draftDoc.paragraphs,
+          fileName: draftFileName,
+          paragraphs: draftText ? draftText.split(/\n{2,}/).filter(Boolean) : activeDataset.draftDoc.paragraphs,
           fullText: draftText || activeDataset.draftDoc.fullText,
         },
         finalDoc: {
           id: `final-${newDatasetId}`,
           title: `${datasetTitle} (Final Gazette)`,
-          fileName: 'custom_final.pdf',
+          fileName: finalFileName,
           paragraphs: finalParagraphs,
           fullText: finalText || activeDataset.finalDoc.fullText,
         },
@@ -171,6 +183,7 @@ export default function App() {
       alert(`Error during comparative analysis: ${err.message}`);
     } finally {
       setIsAnalyzing(false);
+      setAnalysisProgress(null);
     }
   };
 
@@ -192,7 +205,7 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
         {/* Case Study Context Header */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -208,8 +221,16 @@ export default function App() {
               </p>
             </div>
 
-            {/* Export & Action Tools */}
-            <div className="flex items-center gap-3">
+            {/* Action Tools */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 rounded-lg text-xs font-semibold transition-colors"
+                title="Input or replace Final Gazette, Comments, or Draft files"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                Input / Change Files
+              </button>
               <ExportMenu
                 results={activeDataset.results}
                 summary={summary}
@@ -217,7 +238,43 @@ export default function App() {
               />
             </div>
           </div>
+
+          {/* Active Documents Meta Row */}
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex-wrap">
+            <span className="font-semibold text-slate-600">Active Files:</span>
+            <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
+              Draft: {activeDataset.draftDoc.fileName}
+            </span>
+            <span className="bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-blue-700 font-medium">
+              Comments: {activeDataset.comments.length} submissions
+            </span>
+            <span className="bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-emerald-700 font-medium">
+              Final Gazette: {activeDataset.finalDoc.fileName}
+            </span>
+          </div>
         </div>
+
+        {/* Live Analysis Progress Bar */}
+        {analysisProgress && (
+          <div className="bg-blue-600 text-white rounded-2xl p-4 shadow-md space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-2 font-semibold">
+                <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                <span>Evaluating Comment {analysisProgress.current} of {analysisProgress.total}:</span>
+                <span className="font-normal opacity-90 truncate max-w-md">{analysisProgress.title}</span>
+              </span>
+              <span className="font-bold">
+                {Math.round((analysisProgress.current / Math.max(1, analysisProgress.total)) * 100)}%
+              </span>
+            </div>
+            <div className="w-full bg-blue-700/60 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-white h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(analysisProgress.current / Math.max(1, analysisProgress.total)) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Tab 1: Comments & Implementation Verdicts */}
         {activeTab === 'results' && (
@@ -342,6 +399,7 @@ export default function App() {
             highlightParagraphIndex={highlightParagraphIndex}
             highlightText={highlightText}
             highlightCommentNumber={highlightCommentNumber}
+            onOpenUploadModal={() => setIsUploadModalOpen(true)}
           />
         )}
 
@@ -360,6 +418,8 @@ export default function App() {
         onClose={() => setIsUploadModalOpen(false)}
         onRunAnalysis={handleRunCustomAnalysis}
         isAnalyzing={isAnalyzing}
+        currentDraftText={activeDataset.draftDoc.fullText}
+        currentFinalText={activeDataset.finalDoc.fullText}
       />
 
       {/* Footer */}

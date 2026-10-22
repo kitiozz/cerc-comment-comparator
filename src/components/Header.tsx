@@ -102,16 +102,17 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onOpenUploadModal}
               disabled={isAnalyzing}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm shadow-blue-500/20 disabled:opacity-50"
+              title="Input different Final Gazette, Stakeholder Comments, and Draft files"
             >
               {isAnalyzing ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Analyzing...
+                  Analyzing Documents...
                 </>
               ) : (
                 <>
                   <UploadCloud className="w-3.5 h-3.5" />
-                  Analyze Custom PDFs
+                  Input / Upload Files
                 </>
               )}
             </button>

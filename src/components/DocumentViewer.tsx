@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, BookOpen, FileText, Layers, ExternalLink, ShieldCheck, MapPin, CheckCircle2 } from 'lucide-react';
+import { Search, BookOpen, FileText, Layers, ExternalLink, ShieldCheck, MapPin, CheckCircle2, UploadCloud } from 'lucide-react';
 import { ComparisonDataset } from '../types';
 
 interface DocumentViewerProps {
@@ -8,6 +8,7 @@ interface DocumentViewerProps {
   highlightParagraphIndex?: number | null;
   highlightText?: string | null;
   highlightCommentNumber?: number | null;
+  onOpenUploadModal?: () => void;
 }
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({
@@ -16,6 +17,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   highlightParagraphIndex,
   highlightText,
   highlightCommentNumber,
+  onOpenUploadModal,
 }) => {
   const [selectedDoc, setSelectedDoc] = useState<'draft' | 'final' | 'comments'>(initialDoc);
   const [searchTerm, setSearchTerm] = useState('');
@@ -144,17 +146,30 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           <span className="text-blue-500 text-[11px]">({getDocFileName()})</span>
         </div>
         
-        {highlightParagraphIndex && selectedDoc === 'final' ? (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 font-semibold text-[11px] border border-emerald-300">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            Focusing on Verified Evidence Source: Paragraph #{highlightParagraphIndex}
-            {highlightCommentNumber ? ` (Comment #${highlightCommentNumber})` : ''}
-          </div>
-        ) : (
-          <div className="text-[11px] text-blue-700 font-medium">
-            Showing {filteredParagraphs.length} clauses / blocks
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {highlightParagraphIndex && selectedDoc === 'final' ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 font-semibold text-[11px] border border-emerald-300">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              Focusing on Verified Evidence Source: Paragraph #{highlightParagraphIndex}
+              {highlightCommentNumber ? ` (Comment #${highlightCommentNumber})` : ''}
+            </div>
+          ) : (
+            <div className="text-[11px] text-blue-700 font-medium">
+              Showing {filteredParagraphs.length} clauses / blocks
+            </div>
+          )}
+
+          {onOpenUploadModal && (
+            <button
+              onClick={onOpenUploadModal}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-50 border border-blue-200 text-blue-700 rounded-md font-semibold text-[11px] transition-colors shadow-2xs ml-2"
+              title="Upload different Final Gazette, Comments, or Draft files"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              Input / Change Files
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Document Content List */}

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import * as XLSX from 'xlsx';
@@ -20,7 +21,7 @@ const upload = multer({
 });
 
 function getGeminiClient(): GoogleGenAI | null {
-  const key = process.env.GEMINI_API_KEY;
+  const key = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY_3;
   if (!key) return null;
   return new GoogleGenAI({ apiKey: key });
 }
@@ -389,42 +390,126 @@ function normalizeMappingResult(parsed: any, defaultSuggestion = ''): any {
 // ─────────────────────────────────────────────
 
 app.get('/api/health', (req, res) => {
+  const hasKey = !!(process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY_3);
   res.json({
     status: 'ok',
-    hasGeminiKey: !!process.env.GEMINI_API_KEY,
+    hasGeminiKey: hasKey,
     timestamp: new Date().toISOString()
   });
 });
 
-// PDF Text Extraction Route
+// Universal Document Text Extraction (supports PDF, TXT, MD, CSV, JSON)
+async function extractDocumentBuffer(buffer: Buffer, originalName: string) {
+  const isPdf =
+    originalName.toLowerCase().endsWith('.pdf') ||
+    (buffer.length >= 4 && buffer.slice(0, 4).toString() === '%PDF');
+
+  let fullText = '';
+  let pageCount = 1;
+
+  if (isPdf) {
+    const data = await pdfParse(buffer);
+    fullText = data.text || '';
+    pageCount = data.numpages || 1;
+  } else {
+    fullText = buffer.toString('utf-8');
+    pageCount = 1;
+  }
+
+  const paragraphs = fullText
+    .replace(/\r\n/g, '\n')
+    .split(/\n\n+/)
+    .map(p => p.trim())
+    .filter(p => p.length > 25);
+
+  return {
+    fileName: originalName,
+    pageCount,
+    textLength: fullText.length,
+    fullText,
+    paragraphs,
+  };
+}
+
+// PDF Text Extraction Route (backward-compatible)
 app.post('/api/extract-pdf', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No PDF file uploaded' });
+      return res.status(400).json({ error: 'No file uploaded' });
     }
-
-    const data = await pdfParse(req.file.buffer);
-    const fullText = data.text || '';
-
-    // Split into paragraphs / clause blocks
-    const paragraphs = fullText
-      .replace(/\r\n/g, '\n')
-      .split(/\n\n+/)
-      .map(p => p.trim())
-      .filter(p => p.length > 30);
-
-    res.json({
-      fileName: req.file.originalname,
-      pageCount: data.numpages,
-      textLength: fullText.length,
-      fullText,
-      paragraphs
-    });
+    const result = await extractDocumentBuffer(req.file.buffer, req.file.originalname);
+    res.json(result);
   } catch (error: any) {
-    console.error('Error parsing PDF:', error);
-    res.status(500).json({ error: 'Failed to extract text from PDF: ' + error.message });
+    console.error('Error parsing document:', error);
+    res.status(500).json({ error: 'Failed to extract text from document: ' + error.message });
   }
 });
+
+// Universal Document Extraction Endpoint
+app.post('/api/extract-document', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const result = await extractDocumentBuffer(req.file.buffer, req.file.originalname);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error parsing document:', error);
+    res.status(500).json({ error: 'Failed to extract document: ' + error.message });
+  }
+});
+
+// Load Pre-existing Benchmark Files from Repository (comments.pdf, draft.pdf, final.pdf)
+app.get('/api/load-repo-files', async (req, res) => {
+  try {
+    const cwd = process.cwd();
+    const commentsPath = path.join(cwd, 'comments.pdf');
+    const draftPath = path.join(cwd, 'draft.pdf');
+    const finalPath = path.join(cwd, 'final.pdf');
+    const resultsJsonPath = path.join(cwd, 'results.json');
+
+    const result: any = {
+      hasCommentsPdf: fs.existsSync(commentsPath),
+      hasDraftPdf: fs.existsSync(draftPath),
+      hasFinalPdf: fs.existsSync(finalPath),
+      hasResultsJson: fs.existsSync(resultsJsonPath),
+      comments: null,
+      draft: null,
+      final: null,
+      cachedResults: null,
+    };
+
+    if (result.hasDraftPdf) {
+      const buf = fs.readFileSync(draftPath);
+      result.draft = await extractDocumentBuffer(buf, 'draft.pdf');
+    }
+
+    if (result.hasFinalPdf) {
+      const buf = fs.readFileSync(finalPath);
+      result.final = await extractDocumentBuffer(buf, 'final.pdf');
+    }
+
+    if (result.hasCommentsPdf) {
+      const buf = fs.readFileSync(commentsPath);
+      result.comments = await extractDocumentBuffer(buf, 'comments.pdf');
+    }
+
+    if (result.hasResultsJson) {
+      try {
+        const raw = fs.readFileSync(resultsJsonPath, 'utf-8');
+        result.cachedResults = JSON.parse(raw);
+      } catch (e) {
+        console.warn('Failed parsing results.json:', e);
+      }
+    }
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error loading repo files:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // AI Analysis Route using Gemini API
 app.post('/api/analyze-comment', async (req, res) => {

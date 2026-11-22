@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import pdfParse from 'pdf-parse';
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 import { GoogleGenAI } from '@google/genai';
 import { parseCommentsFromText } from './src/services/commentParser';
 import { buildQueries } from './src/services/bm25';
@@ -86,12 +88,19 @@ async function extractText(filePath: string): Promise<string> {
     return '';
   }
   const ext = path.extname(filePath).toLowerCase();
+  const dataBuffer = fs.readFileSync(filePath);
   if (ext === '.pdf') {
-    const dataBuffer = fs.readFileSync(filePath);
     const parsed = await pdfParse(dataBuffer);
-    return parsed.text || '';
+    if (!parsed.text?.trim()) throw new Error(`No selectable text in ${filePath}; scanned PDFs need OCR.`);
+    return parsed.text;
   }
-  return fs.readFileSync(filePath, 'utf-8');
+  if (ext === '.docx') return (await mammoth.extractRawText({ buffer: dataBuffer })).value;
+  if (ext === '.xlsx' || ext === '.xls') {
+    const workbook = XLSX.read(dataBuffer, { type: 'buffer' });
+    return workbook.SheetNames.map((name) => 'Sheet: ' + name + '\\n' + XLSX.utils.sheet_to_csv(workbook.Sheets[name])).join('\\n\\n');
+  }
+  if (['.txt', '.md', '.csv', '.json', '.xml', '.html', '.htm'].includes(ext)) return dataBuffer.toString('utf-8');
+  throw new Error('Unsupported file type: ' + ext);
 }
 
 const SYSTEM_PROMPT = `You are an impartial regulatory-policy and document-analysis assistant. The uploaded documents may concern any regulatory domain, industry, or jurisdiction. Do not assume electricity, energy, CERC, or any specific regulator unless the documents themselves establish it.

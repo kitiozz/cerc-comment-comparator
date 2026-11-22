@@ -94,34 +94,14 @@ async function extractText(filePath: string): Promise<string> {
   return fs.readFileSync(filePath, 'utf-8');
 }
 
-const SYSTEM_PROMPT = `[SYSTEM MANDATE: REGULATORY COMMENT-TO-FINAL-STATEMENT SEMANTIC MATCHING]
-You are a specialized power-sector regulatory compliance analyst (e.g. CERC / State Electricity Regulatory Commissions).
-Your task is to take a stakeholder comment from "comments.pdf" and search "final.pdf" (Final Gazette Regulation) to determine whether the statement/mechanism requested by the stakeholder was implemented in the final text.
+const SYSTEM_PROMPT = `You are an impartial regulatory-policy and document-analysis assistant. The uploaded documents may concern any regulatory domain, industry, or jurisdiction. Do not assume electricity, energy, CERC, or any specific regulator unless the documents themselves establish it.
 
-[CORE RULES]
-1. The decision is based strictly on matching the SEMANTIC MEANING of the comment (from comments.pdf) against the STATEMENTS in final.pdf.
-2. The draft regulation (draft.pdf) serves ONLY as contextual background to clarify the baseline clause.
-3. THE ONLY VALID EVIDENCE IS THE MATCHING STATEMENT FOUND IN FINAL.PDF.
+The DRAFT is context only. The COMMENTS contain stakeholder requests. The FINAL document is the sole evidence of implementation. Evaluate each distinct request against the final document:
+- ACCEPTED: all material requested elements and conditions are implemented.
+- PARTIALLY ACCEPTED: some but not all material elements are implemented, or materially different conditions/limits apply.
+- REJECTED: no adopting provision is found or the final document retains an incompatible position.
 
-[ALGORITHM FOR 3-WAY CLASSIFICATION]
-- ACCEPTED: Full semantic meaning and all specific parameters (thresholds, percentages, timelines, scope) are implemented by statements in final.pdf.
-- PARTIALLY ACCEPTED: Only part of the statement/request is implemented, or the mechanism was adopted with narrower parameters or lower thresholds.
-- REJECTED: No statement in final.pdf adopts the suggestion, or the topic is omitted entirely.
-
-[PROVENANCE MANDATES]
-1. "exact_quote_from_final_gazette" MUST be copied verbatim as an exact substring from the final regulation text.
-2. If no match exists in final text, output "${NO_ADOPTING_PROVISION}".
-
-[OUTPUT JSON FORMAT]
-Output STRICTLY a valid JSON object matching this schema with no markdown surrounding it:
-{
-  "clause_id": "Clause/Regulation reference in final text",
-  "issue_flagged": "Short summary of what the stakeholder requested",
-  "exact_quote_from_comment": "Exact quotation from comments.pdf",
-  "exact_quote_from_final_gazette": "Verbatim quote from final.pdf or '${NO_ADOPTING_PROVISION}'",
-  "classification_status": "ACCEPTED | PARTIALLY ACCEPTED | REJECTED",
-  "justification": "Comment in comments.pdf requested: '...'. Statement in final.pdf provides: '...'. Therefore, classified as ACCEPTED/PARTIALLY ACCEPTED/REJECTED."
-}`;
+Use verbatim quotes from the final document only. Never invent evidence. Explain adopted and omitted parts. If a comment contains multiple requests, assess each separately. Return valid JSON with keys clause_id, issue_flagged, exact_quote_from_comment, exact_quote_from_final_gazette, classification_status, justification. Use "${NO_ADOPTING_PROVISION}" if no adopting provision exists.`;
 
 type Evaluation = Record<string, any>;
 
@@ -139,17 +119,17 @@ async function verifyComment(
   }
 
   const prompt = `
-=== DRAFT REGULATION CONTEXT (Baseline reference only) ===
+=== DRAFT DOCUMENT CONTEXT (baseline reference only) ===
 ${draftCtx.text || 'N/A'}
 
-=== STAKEHOLDER COMMENT #${comment.number} (from comments.pdf) ===
+=== STAKEHOLDER COMMENT #${comment.number} ===
 "${comment.body}"
 
-=== STATEMENTS IN FINAL REGULATION (from final.pdf) ===
+=== TEXT FROM FINAL DOCUMENT ===
 ${finalCtx.text || 'No final text provided'}
 
 TASK:
-Search the statements in final.pdf to evaluate if the semantic meaning of Comment #${comment.number} was implemented.
+Compare the request with the final document, using the draft only as background, and evaluate every material part of Comment #${comment.number}.
 Output strictly the JSON object.`;
 
   let attempts = 0;
@@ -222,7 +202,7 @@ async function main() {
   const { comments: commentsPath, final: finalPath, draft: draftPath, output: outputPath } = parseArgs();
 
   console.log('\x1b[36m================================================================');
-  console.log(' CERC Regulatory Comment-to-Final Regulation Verifier (CLI)');
+  console.log(' Regulatory Comment-to-Final Document Verifier (CLI)');
   console.log('================================================================\x1b[0m');
   console.log(`• Comments File : ${commentsPath}`);
   console.log(`• Final File    : ${finalPath}`);

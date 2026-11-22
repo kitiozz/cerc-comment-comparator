@@ -5,6 +5,7 @@ import fs from 'fs';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import * as XLSX from 'xlsx';
+import mammoth from 'mammoth';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import {
@@ -41,57 +42,40 @@ function getGeminiClient(): GoogleGenAI | null {
 // SYSTEM PROMPT FOR REGULATORY COMMENT -> FINAL REGULATION MATCHING
 // (temperature 0 + fixed JSON schema keep output consistent; they do not make an LLM strictly deterministic)
 // ─────────────────────────────────────────────
-const SYSTEM_PROMPT = `[SYSTEM MANDATE: REGULATORY COMMENT-TO-FINAL-STATEMENT SEMANTIC MATCHING ENGINE]
-You are a specialized power-sector regulatory compliance analyst (e.g. CERC / State Electricity Regulatory Commissions).
-Your task is to take a stakeholder comment from "comments.pdf" and search the "final.pdf" (Final Gazette Regulation) to determine whether the statement/mechanism requested by the stakeholder was implemented in the final text.
+const SYSTEM_PROMPT = `[SYSTEM MANDATE: DOMAIN-GENERAL REGULATORY COMMENT IMPLEMENTATION ANALYSIS]
+You are an impartial regulatory-policy and document-analysis assistant. Uploaded documents may concern ANY regulatory domain, jurisdiction, industry, or subject. Do not assume electricity, energy, CERC, a country, regulator, or legal framework unless the documents establish it.
 
-[CORE ARCHITECTURAL RULE: COMMENT <-> FINAL SEMANTIC MATCHING]
-1. The decision is based strictly on matching the SEMANTIC MEANING of the comment (from comments.pdf) against the STATEMENTS in the final regulation (final.pdf).
-2. The draft regulation (draft.pdf) serves ONLY as contextual background to clarify what clause or baseline the stakeholder was referencing. It is NOT the evidence.
-3. THE ONLY VALID EVIDENCE IS THE MATCHING STATEMENT FOUND IN FINAL.PDF.
+ROLE OF INPUTS:
+1. DRAFT: baseline/context only. Use it to understand the prior provision. It is not evidence of adoption.
+2. COMMENTS: stakeholder requests, objections, or recommendations. Evaluate each distinct request separately.
+3. FINAL: authoritative outcome. Only text actually present in this document can prove implementation.
 
-[ALGORITHM FOR 3-WAY CLASSIFICATION]
-Take the recommendation/suggestions from the stakeholder comment and search for corresponding statements in final.pdf:
+CLASSIFICATION:
+- ACCEPTED: the final document implements all material parts of the request, including conditions, limits, dates, thresholds, scope, and exceptions.
+- PARTIALLY_ACCEPTED: the final document implements some, but not all, material parts, or adopts the request with materially different limits or conditions.
+- REJECTED: no relevant adopting provision is found, or the final document retains an incompatible position.
+Do not infer acceptance merely because the final document discusses the same topic.
 
-A. ACCEPTED:
-   - The full semantic meaning, intent, and all specific conditions/parameters (e.g., percentages, timelines, formulas, scopes, thresholds) requested in the comment are matched and implemented by statements in final.pdf.
-   - Evidence: Copy the exact verbatim statement from final.pdf that implements the full request.
+EVIDENCE AND ACCURACY:
+- Quote evidence verbatim from the supplied FINAL document text. Never invent, paraphrase, or complete a quotation.
+- For ACCEPTED or PARTIALLY_ACCEPTED, provide the smallest sufficient exact excerpt(s) supporting the adopted part.
+- For REJECTED, use exactly "No adopting provision found in final regulation" as the evidence quote.
+- Explain which parts were adopted and which were not. Do not assume domain-specific terminology or expand acronyms without support.
+- If a comment contains multiple independent requests, create a separate mapping entry for each and aggregate: all accepted = ACCEPTED; all rejected = REJECTED; mixed/partial = PARTIALLY_ACCEPTED.
 
-B. PARTIALLY ACCEPTED:
-   - A statement in final.pdf adopts part of the stakeholder's suggestion (e.g. introduces the general mechanism, but with narrower parameters, lower thresholds, or excludes one of the sub-demands), OR accepts 1 out of multiple recommendations in the comment while omitting the rest.
-   - Evidence: Copy the exact statement from final.pdf that implements the partial portion, and explicitly explain which part was adopted and which was omitted.
-
-C. REJECTED:
-   - No statement in final.pdf embodies the requested comment, the topic is omitted, or the final regulation retains the contrary rule.
-   - Evidence: Set to "No adopting provision found in final regulation".
-
-[SINGLE-COMMENT ISOLATION]
-- Evaluate only the single comment provided in this request.
-- Match its semantic meaning against all provided excerpts of final.pdf.
-
-[ANTI-HALLUCINATION & PROVENANCE MANDATES]
-1. ZERO-FABRICATION RULE: The field "exact_quote_from_final_gazette" MUST be copied verbatim as an exact substring from the FINAL REGULATION EXCERPTS provided. Never invent or synthesize text.
-2. ABSENCE PROOF: If the final regulation did not adopt the stakeholder suggestion, set "exact_quote_from_final_gazette" to "No adopting provision found in final regulation" and classify as REJECTED.
-
-[REQUIRED JSON SCHEMA]
-Output strictly one minified JSON object following this exact schema:
-
+Return one valid JSON object, without markdown:
 {
-    "metadata": {
-        "state": "[Insert State/Central, e.g., CERC / Central / Rajasthan]",
-        "domain": "[Insert Domain, e.g., Power Sector / Deviation Settlement / Grid Code / Tariff]"
-    },
-    "mapping_analysis": [
-        {
-            "clause_id": "[Specific clause or regulation heading where matching statement occurs in final.pdf, e.g., Regulation 7 / Annexure-I Clause (iii)]",
-            "issue_flagged": "[Summary under 15 words of what the stakeholder requested]",
-            "exact_quote_from_comment": "[Exact quote of recommendation from comments.pdf]",
-            "exact_quote_from_final_gazette": "[VERBATIM matching statement from final.pdf, or 'No adopting provision found in final regulation']",
-            "classification_status": "[ACCEPTED or PARTIALLY ACCEPTED or REJECTED]",
-            "justification": "Comment in comments.pdf requested: '[quote]'. Statement in final.pdf provides: '[quote]'. Semantic match assessment: [Full/Partial/None]. Therefore, classified as [ACCEPTED / PARTIALLY ACCEPTED / REJECTED]."
-        }
-    ]
-}`;
+  "metadata": { "jurisdiction": "Jurisdiction/regulator if stated, otherwise Not specified", "domain": "Domain inferred from the documents, otherwise Not specified" },
+  "mapping_analysis": [{
+    "clause_id": "Relevant section/clause in final document, or Not found",
+    "issue_flagged": "Short description of the request",
+    "exact_quote_from_comment": "Verbatim request from comments",
+    "exact_quote_from_final_gazette": "Verbatim supporting excerpt, or No adopting provision found in final regulation",
+    "classification_status": "ACCEPTED, PARTIALLY ACCEPTED, or REJECTED",
+    "justification": "Explain the comparison, adopted and omitted elements, and why the classification follows."
+  }]
+}
+`;
 
 
 // ─────────────────────────────────────────────
@@ -107,39 +91,35 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Universal Document Text Extraction (supports PDF, TXT, MD, CSV, JSON)
+// Extract text from supported, text-bearing document formats.
+// Scanned/image-only PDFs require OCR, which is not enabled in this version.
 async function extractDocumentBuffer(buffer: Buffer, originalName: string) {
-  const isPdf =
-    originalName.toLowerCase().endsWith('.pdf') ||
-    (buffer.length >= 4 && buffer.slice(0, 4).toString() === '%PDF');
-
+  const ext = path.extname(originalName).toLowerCase();
   let fullText = '';
   let pageCount = 1;
-
-  if (isPdf) {
+  if (ext === '.pdf' || (buffer.length >= 4 && buffer.slice(0, 4).toString() === '%PDF')) {
     const data = await pdfParse(buffer);
     fullText = data.text || '';
     pageCount = data.numpages || 1;
-  } else {
+    if (!fullText.trim()) throw new Error('This PDF contains no selectable text. It may be scanned or image-only; OCR is not enabled yet.');
+  } else if (ext === '.docx') {
+    const data = await mammoth.extractRawText({ buffer });
+    fullText = data.value || '';
+  } else if (ext === '.xlsx' || ext === '.xls') {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    fullText = workbook.SheetNames.map((name) => 'Sheet: ' + name + '\n' + XLSX.utils.sheet_to_csv(workbook.Sheets[name], { blankrows: false })).join('\n\n');
+  } else if (['.txt', '.md', '.csv', '.json', '.xml'].includes(ext)) {
     fullText = buffer.toString('utf-8');
-    pageCount = 1;
+  } else if (ext === '.html' || ext === '.htm') {
+    fullText = buffer.toString('utf-8').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<\/(p|div|h[1-6]|li|tr|section|article)>/gi, '\n').replace(/<[^>]+>/g, ' ');
+  } else {
+    throw new Error('Unsupported file type ' + (ext || 'unknown') + '. Supported formats: PDF, DOCX, XLSX, XLS, TXT, MD, CSV, JSON, XML, and HTML.');
   }
-
-  const paragraphs = fullText
-    .replace(/\r\n/g, '\n')
-    .split(/\n\n+/)
-    .map(p => p.trim())
-    .filter(p => p.length > 25);
-
-  return {
-    fileName: originalName,
-    pageCount,
-    textLength: fullText.length,
-    fullText,
-    paragraphs,
-  };
+  fullText = fullText.replace(/\u0000/g, '').replace(/\r\n/g, '\n').trim();
+  if (!fullText) throw new Error('No readable text was extracted from this file.');
+  const paragraphs = fullText.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  return { fileName: originalName, pageCount, textLength: fullText.length, fullText, paragraphs };
 }
-
 // PDF Text Extraction Route (backward-compatible)
 app.post('/api/extract-pdf', upload.single('file'), async (req, res) => {
   try {
@@ -150,7 +130,7 @@ app.post('/api/extract-pdf', upload.single('file'), async (req, res) => {
     res.json(result);
   } catch (error: any) {
     console.error('Error parsing document:', error);
-    res.status(500).json({ error: 'Failed to extract text from document: ' + error.message });
+    res.status(422).json({ error: error.message || 'Failed to extract document.' });
   }
 });
 
@@ -164,7 +144,7 @@ app.post('/api/extract-document', upload.single('file'), async (req, res) => {
     res.json(result);
   } catch (error: any) {
     console.error('Error parsing document:', error);
-    res.status(500).json({ error: 'Failed to extract document: ' + error.message });
+    res.status(422).json({ error: error.message || 'Failed to extract document.' });
   }
 });
 
@@ -251,20 +231,20 @@ app.post('/api/analyze-comment', async (req, res) => {
 
     if (ai) {
       const userPrompt = `
-=== DRAFT REGULATION CONTEXT (Reference only to clarify background clause) ===
+=== DRAFT DOCUMENT CONTEXT (baseline/background only) ===
 ${draftCtx.text || 'No draft excerpts provided.'}
 
-=== STAKEHOLDER COMMENT FROM comments.pdf (Comment #${commentNumber}) ===
+=== STAKEHOLDER COMMENT (Comment #${commentNumber}) ===
 Title: ${comment.title || 'Regulatory Comment'}
 Draft Clause Reference: ${comment.draft_quote || 'N/A'}
 Stakeholder Suggestion / Recommendation to match against final regulation:
 "${activeSuggestion}"
 
-=== STATEMENTS IN FINAL REGULATION (final.pdf)${finalCtx.mode === 'retrieved' ? ' — most relevant clauses only' : ''} ===
+=== TEXT FROM FINAL DOCUMENT${finalCtx.mode === 'retrieved' ? ' — most relevant clauses only' : ''} ===
 ${finalCtx.text || 'No final regulation text provided.'}
 
 TASK:
-Search the statements in final.pdf to evaluate if the semantic meaning of the stakeholder comment from comments.pdf was implemented:
+Compare the stakeholder request with the final document, using the draft only as background. Evaluate meaning, scope, conditions, exceptions, dates, thresholds, and every material part of the request:
 - Full semantic match of all conditions/recommendations in final.pdf -> ACCEPTED (evidence = exact statement in final.pdf)
 - Partial statement / subset of conditions implemented in final.pdf -> PARTIALLY ACCEPTED (evidence = exact statement in final.pdf)
 - Not present / no matching statement in final.pdf -> REJECTED (evidence = "${NO_ADOPTING_PROVISION}")

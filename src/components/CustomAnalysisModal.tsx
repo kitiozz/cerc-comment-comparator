@@ -173,7 +173,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
         setParsedComments(comments);
       }
 
-      setDatasetTitle('Repository Consultation (HPERC DSM Benchmark)');
+      setDatasetTitle('Sample Consultation (Electricity-Sector Benchmark)');
       setStatusMessage('✔ Successfully loaded comments.pdf, draft.pdf, and final.pdf from workspace!');
       setActiveTab('comments');
     } catch (err: any) {
@@ -714,7 +714,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  2. Final Regulation Notification Text (Candidate evidence corpus):
+                  2. Final Regulation Text (Authoritative evidence):
                 </label>
                 <textarea
                   rows={4}
@@ -763,7 +763,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
                   </div>
                   <div className="bg-white p-2.5 rounded-lg border border-slate-200">
                     <div className="font-semibold text-slate-800">final.pdf</div>
-                    <div className="text-[10px] text-slate-500">Final Regulation Notification</div>
+                    <div className="text-[10px] text-slate-500">Final Regulation</div>
                   </div>
                 </div>
 

@@ -424,7 +424,7 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
-            CERC Comment Comparator — Regulatory Consultation Response Evaluation Framework
+            Regulatory Comment Comparator — Regulatory Consultation Response Evaluation Framework
           </span>
           <span className="text-[11px] text-slate-400">
             Node.js Runtime & Gemini-Powered Semantic Clause Verification

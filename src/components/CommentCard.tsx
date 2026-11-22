@@ -97,6 +97,14 @@ export const CommentCard: React.FC<CommentCardProps> = ({
                   </span>
                 )}
 
+                {/* Fallback badge: this verdict came from a keyword check, not the AI model */}
+                {result.analysis_mode === 'heuristic' && (
+                  <span className="inline-flex items-center gap-1 font-medium bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-[11px]">
+                    <AlertTriangle className="w-3 h-3 text-amber-600" />
+                    Keyword heuristic (no AI model)
+                  </span>
+                )}
+
                 {result.file_set && (
                   <span className="text-[11px] text-slate-400">
                     Source: {result.file_set}

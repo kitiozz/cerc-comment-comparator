@@ -1,6 +1,7 @@
 /**
- * BM25Okapi semantic token retrieval and scoring engine.
- * Mirrors the Python rank_bm25 implementation used in CERC Comment Comparator.
+ * BM25Okapi lexical (keyword-based) retrieval and scoring.
+ * BM25 matches shared words, weighted by rarity and clause length. It does not understand meaning.
+ * Used by services/analysis.ts (selectContext) to pick the most relevant clauses from long regulations.
  */
 
 export class BM25Okapi {

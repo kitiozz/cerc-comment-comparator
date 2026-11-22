@@ -26,7 +26,12 @@ export interface CommentAnalysisResult {
   confidence_score?: number;
   file_set?: string;
 
-  // Anti-Hallucination & Provenance Verification Fields
+  // How the result was produced: 'gemini' = AI model, 'heuristic' = keyword fallback (no model used).
+  analysis_mode?: 'gemini' | 'heuristic';
+  // How much of the final regulation the model saw: whole text, BM25-retrieved clauses, or a truncated head.
+  context_mode?: 'full' | 'retrieved' | 'truncated';
+
+  // Evidence grounding & provenance fields
   evidence_verified?: boolean;
   evidence_match_confidence?: number;
   evidence_paragraph_index?: number;

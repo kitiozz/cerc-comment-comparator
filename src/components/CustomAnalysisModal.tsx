@@ -58,9 +58,9 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
   const [finalFileName, setFinalFileName] = useState('final.pdf');
 
   // Extracted Text States
-  const [draftText, setDraftText] = useState(currentDraftText);
+  const [draftText, setDraftText] = useState('');
   const [commentsRawText, setCommentsRawText] = useState('');
-  const [finalText, setFinalText] = useState(currentFinalText);
+  const [finalText, setFinalText] = useState('');
 
   // Parsed Comments
   const [parsedComments, setParsedComments] = useState<ParsedComment[]>([]);
@@ -76,11 +76,23 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
   // Repository files availability
   const [repoLoading, setRepoLoading] = useState(false);
 
-  // Sync current text if initial props change
+  // Start each custom comparison with empty inputs. Demo data must never be silently reused.
   useEffect(() => {
-    if (currentDraftText && !draftText) setDraftText(currentDraftText);
-    if (currentFinalText && !finalText) setFinalText(currentFinalText);
-  }, [currentDraftText, currentFinalText]);
+    if (!isOpen) return;
+    setDraftFile(null);
+    setCommentsFile(null);
+    setFinalFile(null);
+    setDraftFileName('draft.pdf');
+    setCommentsFileName('comments.pdf');
+    setFinalFileName('final.pdf');
+    setDraftText('');
+    setCommentsRawText('');
+    setFinalText('');
+    setParsedComments([]);
+    setStatusMessage(null);
+    setErrorMessage(null);
+    setActiveTab('upload');
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

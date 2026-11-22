@@ -111,11 +111,10 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`);
-      }
-
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Server returned HTTP ${res.status}`);
+      }
       const text = data.fullText || '';
 
       if (type === 'draft') {

@@ -401,7 +401,7 @@ app.post('/api/export-excel', (req, res) => {
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=cerc_comment_analysis_${Date.now()}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=regulatory_comment_analysis_${Date.now()}.xlsx`);
     res.send(buffer);
   } catch (error: any) {
     console.error('Error generating Excel:', error);

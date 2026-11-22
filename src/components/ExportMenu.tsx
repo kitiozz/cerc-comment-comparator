@@ -67,7 +67,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
   };
 
   const handleCopyMarkdown = () => {
-    let md = `# CERC Comment Comparator — Analysis Report\n`;
+    let md = `# Regulatory Comment Comparator — Analysis Report\n`;
     md += `**Dataset:** ${datasetName}  \n`;
     md += `**Date:** ${new Date().toLocaleDateString()}  \n\n`;
     md += `## Executive Summary\n`;

@@ -48,7 +48,7 @@ for (const sample of CASES) {
 
   test(`${sample.domain}: an invented provision cannot support an accepted verdict`, () => {
     const verification = verifyEvidenceQuotes(
-      ['The authority shall publish a monthly dashboard and pay an annual rebate to every applicant.'],
+      ['A lunar observatory shall transmit asteroid spectra through a deep-space optical array.'],
       sample.final,
       [sample.final],
     );

@@ -106,7 +106,7 @@ function isRealQuote(quote: string): boolean {
 const normalizeForMatch = (s: string) =>
   s.toLowerCase().replace(/[\s\r\n\t]+/g, ' ').replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
 
-const CLAUSE_HEADING_RE = /^(?:Regulation|Clause|Section|Annexure|Schedule|\d+\.|\(\d+\))[^:\n.]+/i;
+const CLAUSE_HEADING_RE = /^(?:Regulation|Rule|Article|Clause|Section|Annexure|Schedule|Part|Title|\d+\.|\(\d+\))[^:\n.]+/i;
 
 function locate(
   para: string,

@@ -17,7 +17,7 @@ import {
 import type { ParsedComment } from './src/types';
 
 /**
- * CERC Regulatory Comment-to-Final Regulation Verifier (CLI mode)
+ * Regulatory Comment-to-Final Document Verifier (CLI mode)
  *
  * Usage:
  *   npx tsx verify.ts --comments=comments.pdf --final=final.pdf [--draft=draft.pdf] [--output=results.json]

@@ -25,13 +25,13 @@ test('cleanContextForLLM preserves multilingual text and only normalizes whitesp
     'विद्युत विनियामक आयोग अधिसूचना',
     'Regla aplicable a todos los solicitantes.',
     '  Section 5 applies.  ',
-  ].join('\\n') + '\\u0000';
+  ].join('\n') + '\u0000';
   const out = cleanContextForLLM(raw);
   assert.match(out, /The rule applies/);
   assert.match(out, /विद्युत/);
   assert.match(out, /Regla aplicable/);
   assert.match(out, /Section 5 applies/);
-  assert.doesNotMatch(out, /\\u0000/);
+  assert.doesNotMatch(out, /\u0000/);
 });
 
 // ── evidence verification ───────────────────────────────────

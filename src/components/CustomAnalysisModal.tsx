@@ -126,7 +126,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
         setFinalFile(file);
         setFinalFileName(file.name);
         setFinalText(text);
-        setStatusMessage(`✔ Extracted Final Gazette: ${data.paragraphs?.length || 0} statements (${Math.round(text.length / 1024)} KB)`);
+        setStatusMessage(`✔ Extracted Final Regulation: ${data.paragraphs?.length || 0} statements (${Math.round(text.length / 1024)} KB)`);
       } else if (type === 'comments') {
         setCommentsFile(file);
         setCommentsFileName(file.name);
@@ -229,7 +229,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
     e.preventDefault();
 
     if (!finalText.trim()) {
-      alert('Please provide the Final Gazette Regulation (file or text). This is required for evidence matching.');
+      alert('Please provide the Final Regulation or final decision document (file or text). This is required for evidence matching.');
       setActiveTab('upload');
       return;
     }
@@ -283,7 +283,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
                 Input Consultation Documents
               </h2>
               <p className="text-xs text-slate-500">
-                Input your custom Final Gazette, Comments file, and Draft regulation to perform comparative analysis
+                Upload the Draft (optional context), stakeholder Comments, and Final Regulation (authoritative outcome) to perform the comparison.
               </p>
             </div>
           </div>
@@ -524,18 +524,18 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
                   </div>
                 </div>
 
-                {/* 3. Final Gazette Dropzone */}
+                {/* 3. Final Regulation Dropzone */}
                 <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col justify-between hover:border-slate-300 transition-colors">
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
                         <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 text-[10px] flex items-center justify-center font-bold">3</span>
-                        Final Gazette
+                        Final Regulation
                       </span>
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">Evidence</span>
                     </div>
                     <p className="text-[11px] text-slate-500 mb-3">
-                      The official enacted notification published in the Gazette of India.
+                      The authoritative final regulation, rule, policy, order, or decision issued by the relevant authority.
                     </p>
                   </div>
 
@@ -552,13 +552,13 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
                       </div>
                     ) : (
                       <div className="bg-white/60 p-2.5 rounded-lg border border-dashed border-slate-300 text-center text-slate-400 text-[11px]">
-                        No final gazette loaded
+                        No final regulation loaded
                       </div>
                     )}
 
                     <label className="cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-xs font-semibold text-slate-700 transition-colors">
                       <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
-                      {isExtracting === 'final' ? 'Extracting...' : finalText ? 'Replace Final Gazette' : 'Upload Final Document (PDF, DOCX, XLSX, TXT, etc.)'}
+                      {isExtracting === 'final' ? 'Extracting...' : finalText ? 'Replace Final Regulation' : 'Upload Final Document (PDF, DOCX, XLSX, TXT, etc.)'}
                       <input
                         type="file"
                         accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.json,.xml,.html,.htm"
@@ -599,7 +599,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
                     Extracted Stakeholder Comments ({parsedComments.length})
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Each item will be individually verified against candidate statements in the Final Gazette.
+                    Each item will be individually verified against candidate statements in the Final Regulation.
                   </p>
                 </div>
 
@@ -714,13 +714,13 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  2. Final Gazette Notification Text (Candidate evidence corpus):
+                  2. Final Regulation Notification Text (Candidate evidence corpus):
                 </label>
                 <textarea
                   rows={4}
                   value={finalText}
                   onChange={(e) => setFinalText(e.target.value)}
-                  placeholder="Paste verbatim statements or full text of the Final Gazette Regulation..."
+                  placeholder="Paste verbatim statements or full text of the Final Regulation Regulation..."
                   className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-xs"
                 />
               </div>
@@ -749,7 +749,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
                   Workspace Repository Benchmark Dataset
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  The application has bundled PDF copies of <strong>comments.pdf</strong>, <strong>draft.pdf</strong>, and <strong>final.pdf</strong> corresponding to the real Himachal Pradesh / Central electricity regulatory consultation benchmarks.
+                  The application has bundled PDF copies of <strong>comments.pdf</strong>, <strong>draft.pdf</strong>, and <strong>final.pdf</strong> used as an optional electricity-sector demonstration benchmark. This sample is not required for custom analyses.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
@@ -763,7 +763,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
                   </div>
                   <div className="bg-white p-2.5 rounded-lg border border-slate-200">
                     <div className="font-semibold text-slate-800">final.pdf</div>
-                    <div className="text-[10px] text-slate-500">Final Gazette Notification</div>
+                    <div className="text-[10px] text-slate-500">Final Regulation Notification</div>
                   </div>
                 </div>
 
@@ -798,7 +798,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
               </span>
               <span>•</span>
               <span className="font-semibold text-slate-700">
-                {finalText ? `${Math.round(finalText.length / 1024)} KB Final Gazette` : 'No Final Gazette'}
+                {finalText ? `${Math.round(finalText.length / 1024)} KB Final Regulation` : 'No Final Regulation'}
               </span>
             </div>
 

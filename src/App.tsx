@@ -121,9 +121,7 @@ export default function App() {
     setAnalysisProgress({ current: 0, total: comments.length, title: 'Preparing evaluation...' });
     try {
       const results: CommentAnalysisResult[] = [];
-      const finalParagraphs = finalText
-        ? finalText.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-        : activeDataset.finalDoc.paragraphs;
+      const finalParagraphs = finalText.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
 
       for (let i = 0; i < comments.length; i++) {
         const comment = comments[i];
@@ -138,8 +136,8 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             comment,
-            draftContext: draftText || activeDataset.draftDoc.fullText,
-            finalContext: finalText || activeDataset.finalDoc.fullText,
+            draftContext: draftText,
+            finalContext: finalText,
             finalParagraphs,
           }),
         });
@@ -161,15 +159,15 @@ export default function App() {
           id: `draft-${newDatasetId}`,
           title: `${datasetTitle} (Draft)`,
           fileName: draftFileName,
-          paragraphs: draftText ? draftText.split(/\n{2,}/).filter(Boolean) : activeDataset.draftDoc.paragraphs,
-          fullText: draftText || activeDataset.draftDoc.fullText,
+          paragraphs: draftText ? draftText.split(/\n{2,}/).filter(Boolean) : [],
+          fullText: draftText,
         },
         finalDoc: {
           id: `final-${newDatasetId}`,
           title: `${datasetTitle} (Final Gazette)`,
           fileName: finalFileName,
           paragraphs: finalParagraphs,
-          fullText: finalText || activeDataset.finalDoc.fullText,
+          fullText: finalText,
         },
         comments,
         results,

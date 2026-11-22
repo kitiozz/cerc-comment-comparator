@@ -2,7 +2,7 @@
 
 A tool that checks whether stakeholder comments on a **draft regulation** were adopted in the **final regulation**. For each comment it returns **Accepted**, **Partially Accepted** or **Rejected**, together with the exact sentence from the final regulation that supports the verdict, so every result can be checked by a person.
 
-The bundled electricity-sector documents are demonstration data only. The analysis workflow is domain-neutral: upload a Draft, stakeholder Comments, and a Final document from any regulatory subject area or jurisdiction.
+The bundled electricity-sector documents are optional demonstration data only. The analysis workflow is domain-neutral: upload a Draft, stakeholder Comments, and a Final document from any regulatory subject area, industry, regulator, or jurisdiction.
 
 ## What it does
 

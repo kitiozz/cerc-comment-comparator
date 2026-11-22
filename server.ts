@@ -362,7 +362,7 @@ app.post('/api/export-excel', (req, res) => {
 
     // 1. Summary Sheet
     const summaryData = [
-      ['CERC Comment Comparator — Analysis Report'],
+      ['Regulatory Comment Comparator — Analysis Report'],
       ['Dataset / Case Study', datasetName || 'Regulatory Comparison'],
       ['Generated Date', new Date().toLocaleString()],
       [],
@@ -429,7 +429,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`CERC Comment Comparator server running on http://0.0.0.0:${PORT}`);
+    console.log(`Regulatory Comment Comparator server running on http://0.0.0.0:${PORT}`);
   });
 }
 

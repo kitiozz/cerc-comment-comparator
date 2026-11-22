@@ -63,7 +63,13 @@ npm run build && npm start
 | `GEMINI_API_KEY` | Required for AI analysis. The CLI also accepts `GEMINI_API_KEY_2` ... `_10` and rotates to the next key on a rate limit. The web server uses the first key it finds. |
 | `MAX_FULL_CONTEXT_CHARS` | Optional. Regulation text up to this length (default 60000 characters) is sent to the model in full. Longer text goes through BM25 retrieval. |
 
-## Uploading your own documents\n\nChoose **Input / Upload Files** and upload one file for each role: Draft (optional context), Comments (requests to evaluate), and Final (the authoritative outcome). Supported text-bearing formats: PDF, DOCX, XLSX, XLS, TXT, MD, CSV, JSON, XML, and HTML. The same workflow can be used for different industries, regulatory subjects, and jurisdictions. The bundled HPERC files are only sample data. Review parsed comments before running the analysis because unusual document layouts may need manual correction.\n\nScanned/image-only PDFs are not OCR-processed yet. Password-protected or malformed files may fail extraction.\n\n## How long documents are handled
+## Uploading your own documents
+
+Choose **Input / Upload Files** and upload one file for each role: Draft (optional context), Comments (requests to evaluate), and Final (the authoritative outcome). Supported text-bearing formats: PDF, DOCX, XLSX, XLS, TXT, MD, CSV, JSON, XML, and HTML. The workflow is intended for different regulatory domains, industries, regulators, and jurisdictions; the bundled electricity-sector files are only sample data. Review parsed comments before running the analysis because unusual document layouts may need manual correction.
+
+Scanned/image-only PDFs are not OCR-processed yet. Password-protected or malformed files may fail extraction.
+
+## How long documents are handled
 
 - **Short regulations** (the benchmark final is about 10,600 characters) are sent to the model in full, so it can see every clause.
 - **Long regulations** are split into clauses, ranked against the comment with BM25 (word matching, not semantic), and only the top clauses are sent. Each result records how much text the model saw in `context_mode` (`full`, `retrieved` or `truncated`).

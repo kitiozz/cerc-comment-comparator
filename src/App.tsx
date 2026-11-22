@@ -164,7 +164,7 @@ export default function App() {
         },
         finalDoc: {
           id: `final-${newDatasetId}`,
-          title: `${datasetTitle} (Final Gazette)`,
+          title: `${datasetTitle} (Final Regulation)`,
           fileName: finalFileName,
           paragraphs: finalParagraphs,
           fullText: finalText,
@@ -224,7 +224,7 @@ export default function App() {
               <button
                 onClick={() => setIsUploadModalOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 rounded-lg text-xs font-semibold transition-colors"
-                title="Input or replace Final Gazette, Comments, or Draft files"
+                title="Upload or replace the Draft, Comments, or Final Regulation files"
               >
                 <UploadCloud className="w-3.5 h-3.5" />
                 Input / Change Files
@@ -247,7 +247,7 @@ export default function App() {
               Comments: {activeDataset.comments.length} submissions
             </span>
             <span className="bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-emerald-700 font-medium">
-              Final Gazette: {activeDataset.finalDoc.fileName}
+              Final Regulation: {activeDataset.finalDoc.fileName}
             </span>
           </div>
         </div>
@@ -389,7 +389,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 2: Gazette Document Viewer */}
+        {/* Tab 2: Final Document Viewer */}
         {activeTab === 'documents' && (
           <DocumentViewer
             dataset={activeDataset}

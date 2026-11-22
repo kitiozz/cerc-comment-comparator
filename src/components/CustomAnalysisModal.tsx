@@ -58,9 +58,9 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
   const [finalFileName, setFinalFileName] = useState('final.pdf');
 
   // Extracted Text States
-  const [draftText, setDraftText] = useState(currentDraftText);
+  const [draftText, setDraftText] = useState('');
   const [commentsRawText, setCommentsRawText] = useState('');
-  const [finalText, setFinalText] = useState(currentFinalText);
+  const [finalText, setFinalText] = useState('');
 
   // Parsed Comments
   const [parsedComments, setParsedComments] = useState<ParsedComment[]>([]);
@@ -76,11 +76,23 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
   // Repository files availability
   const [repoLoading, setRepoLoading] = useState(false);
 
-  // Sync current text if initial props change
+  // Start each custom comparison with empty inputs. Demo data must never be silently reused.
   useEffect(() => {
-    if (currentDraftText && !draftText) setDraftText(currentDraftText);
-    if (currentFinalText && !finalText) setFinalText(currentFinalText);
-  }, [currentDraftText, currentFinalText]);
+    if (!isOpen) return;
+    setDraftFile(null);
+    setCommentsFile(null);
+    setFinalFile(null);
+    setDraftFileName('draft.pdf');
+    setCommentsFileName('comments.pdf');
+    setFinalFileName('final.pdf');
+    setDraftText('');
+    setCommentsRawText('');
+    setFinalText('');
+    setParsedComments([]);
+    setStatusMessage(null);
+    setErrorMessage(null);
+    setActiveTab('upload');
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -99,11 +111,10 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`);
-      }
-
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Server returned HTTP ${res.status}`);
+      }
       const text = data.fullText || '';
 
       if (type === 'draft') {
@@ -388,7 +399,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
               type="text"
               value={datasetTitle}
               onChange={(e) => setDatasetTitle(e.target.value)}
-              placeholder="e.g. CERC Deviation Settlement Regulations 2024"
+              placeholder="e.g. Draft Data Protection Rules 2026"
               className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:ring-1 focus:ring-blue-500 text-xs font-medium"
               required
             />
@@ -400,7 +411,7 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
               <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3 flex items-start gap-2.5 text-blue-900">
                 <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                 <p className="text-xs leading-relaxed">
-                  Upload your 3 regulatory documents in PDF or TXT format. The comparator matches the semantic recommendations from the <strong>Comments file</strong> directly against the provisions in the <strong>Final Gazette</strong>, with the <strong>Draft file</strong> providing baseline clause context.
+                  Upload your Draft, Comments, and Final documents in supported text-bearing formats. Documents can come from any regulatory subject area or jurisdiction. The comparator evaluates requests in the <strong>Comments file</strong> against the <strong>Final document</strong>, using the <strong>Draft</strong> only as background. The analysis is domain-neutral.
                 </p>
               </div>
 
@@ -440,10 +451,10 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
 
                     <label className="cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-xs font-semibold text-slate-700 transition-colors">
                       <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
-                      {isExtracting === 'draft' ? 'Extracting...' : draftText ? 'Replace Draft File' : 'Upload Draft (.pdf, .txt)'}
+                      {isExtracting === 'draft' ? 'Extracting...' : draftText ? 'Replace Draft File' : 'Upload Draft (PDF, DOCX, XLSX, TXT, etc.)'}
                       <input
                         type="file"
-                        accept=".pdf,.txt,.md,.csv,.json"
+                        accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.json,.xml,.html,.htm"
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
@@ -499,10 +510,10 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
 
                     <label className="cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors">
                       <UploadCloud className="w-3.5 h-3.5" />
-                      {isExtracting === 'comments' ? 'Extracting...' : parsedComments.length > 0 ? 'Replace Comments File' : 'Upload Comments (.pdf, .txt)'}
+                      {isExtracting === 'comments' ? 'Extracting...' : parsedComments.length > 0 ? 'Replace Comments File' : 'Upload Comments (PDF, DOCX, XLSX, TXT, etc.)'}
                       <input
                         type="file"
-                        accept=".pdf,.txt,.md,.csv,.json"
+                        accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.json,.xml,.html,.htm"
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
@@ -547,10 +558,10 @@ export const CustomAnalysisModal: React.FC<CustomAnalysisModalProps> = ({
 
                     <label className="cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg text-xs font-semibold text-slate-700 transition-colors">
                       <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
-                      {isExtracting === 'final' ? 'Extracting...' : finalText ? 'Replace Final Gazette' : 'Upload Final Gazette (.pdf, .txt)'}
+                      {isExtracting === 'final' ? 'Extracting...' : finalText ? 'Replace Final Gazette' : 'Upload Final Document (PDF, DOCX, XLSX, TXT, etc.)'}
                       <input
                         type="file"
-                        accept=".pdf,.txt,.md,.csv,.json"
+                        accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.json,.xml,.html,.htm"
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0];

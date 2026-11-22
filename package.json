@@ -8,7 +8,8 @@
     "lint": "tsc --noEmit",
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "start": "node dist/server.cjs"
+    "start": "node dist/server.cjs",
+    "test": "tsx --test test/analysis.test.ts"
   },
   "dependencies": {
     "@google/genai": "latest",
@@ -22,7 +23,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^3.0.2",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "mammoth": "^1.9.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.9",

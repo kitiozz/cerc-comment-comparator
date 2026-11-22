@@ -5,8 +5,20 @@ import fs from 'fs';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import * as XLSX from 'xlsx';
+import mammoth from 'mammoth';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import {
+  cleanContextForLLM,
+  selectContext,
+  verifyEvidenceQuotes,
+  applyGroundingGuardrail,
+  normalizeMappingResult,
+  heuristicClassify,
+  NO_ADOPTING_PROVISION,
+  type Verdict,
+} from './src/services/analysis';
+import { buildQueries } from './src/services/bm25';
 
 const app = express();
 const PORT = 3000;
@@ -27,363 +39,44 @@ function getGeminiClient(): GoogleGenAI | null {
 }
 
 // ─────────────────────────────────────────────
-// SYSTEM PROMPT FOR DETERMINISTIC REGULATORY ANALYSIS (COMMENTS -> FINAL MATCHING)
+// SYSTEM PROMPT FOR REGULATORY COMMENT -> FINAL REGULATION MATCHING
+// (temperature 0 + fixed JSON schema keep output consistent; they do not make an LLM strictly deterministic)
 // ─────────────────────────────────────────────
-const SYSTEM_PROMPT = `[SYSTEM MANDATE: REGULATORY COMMENT-TO-FINAL-STATEMENT SEMANTIC MATCHING ENGINE]
-You are a specialized power-sector regulatory compliance analyst (e.g. CERC / State Electricity Regulatory Commissions).
-Your task is to take a stakeholder comment from "comments.pdf" and search the "final.pdf" (Final Gazette Regulation) to determine whether the statement/mechanism requested by the stakeholder was implemented in the final text.
+const SYSTEM_PROMPT = `[SYSTEM MANDATE: DOMAIN-GENERAL REGULATORY COMMENT IMPLEMENTATION ANALYSIS]
+You are an impartial regulatory-policy and document-analysis assistant. Uploaded documents may concern ANY regulatory domain, jurisdiction, industry, or subject. Do not assume electricity, energy, CERC, a country, regulator, or legal framework unless the documents establish it.
 
-[CORE ARCHITECTURAL RULE: COMMENT <-> FINAL SEMANTIC MATCHING]
-1. The decision is based strictly on matching the SEMANTIC MEANING of the comment (from comments.pdf) against the STATEMENTS in the final regulation (final.pdf).
-2. The draft regulation (draft.pdf) serves ONLY as contextual background to clarify what clause or baseline the stakeholder was referencing. It is NOT the evidence.
-3. THE ONLY VALID EVIDENCE IS THE MATCHING STATEMENT FOUND IN FINAL.PDF.
+ROLE OF INPUTS:
+1. DRAFT: baseline/context only. Use it to understand the prior provision. It is not evidence of adoption.
+2. COMMENTS: stakeholder requests, objections, or recommendations. Evaluate each distinct request separately.
+3. FINAL: authoritative outcome. Only text actually present in this document can prove implementation.
 
-[ALGORITHM FOR 3-WAY CLASSIFICATION]
-Take the recommendation/suggestions from the stakeholder comment and search for corresponding statements in final.pdf:
+CLASSIFICATION:
+- ACCEPTED: the final document implements all material parts of the request, including conditions, limits, dates, thresholds, scope, and exceptions.
+- PARTIALLY_ACCEPTED: the final document implements some, but not all, material parts, or adopts the request with materially different limits or conditions.
+- REJECTED: no relevant adopting provision is found, or the final document retains an incompatible position.
+Do not infer acceptance merely because the final document discusses the same topic.
 
-A. ACCEPTED:
-   - The full semantic meaning, intent, and all specific conditions/parameters (e.g., percentages, timelines, formulas, scopes, thresholds) requested in the comment are matched and implemented by statements in final.pdf.
-   - Evidence: Copy the exact verbatim statement from final.pdf that implements the full request.
+EVIDENCE AND ACCURACY:
+- Quote evidence verbatim from the supplied FINAL document text. Never invent, paraphrase, or complete a quotation.
+- For ACCEPTED or PARTIALLY_ACCEPTED, provide the smallest sufficient exact excerpt(s) supporting the adopted part.
+- For REJECTED, use exactly "No adopting provision found in final regulation" as the evidence quote.
+- Explain which parts were adopted and which were not. Do not assume domain-specific terminology or expand acronyms without support.
+- If a comment contains multiple independent requests, create a separate mapping entry for each and aggregate: all accepted = ACCEPTED; all rejected = REJECTED; mixed/partial = PARTIALLY_ACCEPTED.
 
-B. PARTIALLY ACCEPTED:
-   - A statement in final.pdf adopts part of the stakeholder's suggestion (e.g. introduces the general mechanism, but with narrower parameters, lower thresholds, or excludes one of the sub-demands), OR accepts 1 out of multiple recommendations in the comment while omitting the rest.
-   - Evidence: Copy the exact statement from final.pdf that implements the partial portion, and explicitly explain which part was adopted and which was omitted.
-
-C. REJECTED:
-   - No statement in final.pdf embodies the requested comment, the topic is omitted, or the final regulation retains the contrary rule.
-   - Evidence: Set to "No adopting provision found in final regulation".
-
-[SINGLE-COMMENT ISOLATION]
-- Evaluate only the single comment provided in this request.
-- Match its semantic meaning against all provided excerpts of final.pdf.
-
-[ANTI-HALLUCINATION & PROVENANCE MANDATES]
-1. ZERO-FABRICATION RULE: The field "exact_quote_from_final_gazette" MUST be copied verbatim as an exact substring from the FINAL REGULATION EXCERPTS provided. Never invent or synthesize text.
-2. ABSENCE PROOF: If the final regulation did not adopt the stakeholder suggestion, set "exact_quote_from_final_gazette" to "No adopting provision found in final regulation" and classify as REJECTED.
-
-[REQUIRED DETERMINISTIC JSON SCHEMA]
-Output strictly one minified JSON object following this exact schema:
-
+Return one valid JSON object, without markdown:
 {
-    "metadata": {
-        "state": "[Insert State/Central, e.g., CERC / Central / Rajasthan]",
-        "domain": "[Insert Domain, e.g., Power Sector / Deviation Settlement / Grid Code / Tariff]"
-    },
-    "mapping_analysis": [
-        {
-            "clause_id": "[Specific clause or regulation heading where matching statement occurs in final.pdf, e.g., Regulation 7 / Annexure-I Clause (iii)]",
-            "issue_flagged": "[Summary under 15 words of what the stakeholder requested]",
-            "exact_quote_from_comment": "[Exact quote of recommendation from comments.pdf]",
-            "exact_quote_from_final_gazette": "[VERBATIM matching statement from final.pdf, or 'No adopting provision found in final regulation']",
-            "classification_status": "[ACCEPTED or PARTIALLY ACCEPTED or REJECTED]",
-            "determinism_proof": "Comment in comments.pdf requested: '[quote]'. Statement in final.pdf provides: '[quote]'. Semantic match assessment: [Full/Partial/None]. Therefore, classified as [ACCEPTED / PARTIALLY ACCEPTED / REJECTED]."
-        }
-    ]
-}`;
-
-// ─────────────────────────────────────────────
-// TEXT CLEANING & TAGGING UTILITIES
-// ─────────────────────────────────────────────
-
-const NON_ENGLISH_RANGES: [number, number][] = [
-  [0x0600, 0x06FF], // Arabic
-  [0x0900, 0x097F], // Devanagari (Hindi)
-  [0x0980, 0x09FF], // Bengali
-  [0x0A00, 0x0A7F], // Gurmukhi
-  [0x0A80, 0x0AFF], // Gujarati
-  [0x0B00, 0x0B7F], // Oriya
-  [0x0B80, 0x0BFF], // Tamil
-  [0x0C00, 0x0C7F], // Telugu
-  [0x0C80, 0x0CFF], // Kannada
-  [0x0D00, 0x0D7F], // Malayalam
-  [0x4E00, 0x9FFF], // CJK
-];
-
-function hasNonEnglishScript(text: string): boolean {
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    for (const [start, end] of NON_ENGLISH_RANGES) {
-      if (code >= start && code <= end) return true;
-    }
-  }
-  return false;
+  "metadata": { "jurisdiction": "Jurisdiction/regulator if stated, otherwise Not specified", "domain": "Domain inferred from the documents, otherwise Not specified" },
+  "mapping_analysis": [{
+    "clause_id": "Relevant section/clause in final document, or Not found",
+    "issue_flagged": "Short description of the request",
+    "exact_quote_from_comment": "Verbatim request from comments",
+    "exact_quote_from_final_gazette": "Verbatim supporting excerpt, or No adopting provision found in final regulation",
+    "classification_status": "ACCEPTED, PARTIALLY ACCEPTED, or REJECTED",
+    "justification": "Explain the comparison, adopted and omitted elements, and why the classification follows."
+  }]
 }
+`;
 
-const HINDI_ROMAN_TOKENS = new Set([
-  'vk','gs','dk','dks','esa','ds','dh','ij','ls','vksj',
-  'gksa',';g',';s','fd','tks','tc','rks','uk','gha','hkh',
-  'ml','bl','bls','mls',';k','rfkk','lhkh','dqn','cgqr',
-  'tkrk','gksrk','djrk','djrs','djuk','jgk','jgh','jgs',
-  'lkfk','igys','vkt','dy','vc','ugha','gka','lacakh',
-  'vkjbzlc','vkjihvks','vkjlhvks','ohihh','lhbzvklh',
-  'forqr','åtzk','vfkfu;e','fofu;e','vuqcak','mihkkssä',
-  'vkkssx','ljdkj','çek.ki=','vuqikyu','fofufnz"v',
-  'uohdj.kh;','vkjbzth,l','çkir','varj.k','mi;ksx',
-]);
-
-function isTransliteratedHindi(line: string): boolean {
-  const words = line.trim().toLowerCase().split(/\s+/);
-  if (words.length === 0) return false;
-  let count = 0;
-  for (const w of words) {
-    const clean = w.replace(/[.,;:"']/g, '');
-    if (HINDI_ROMAN_TOKENS.has(clean)) count++;
-  }
-  return words.length >= 3 && count / words.length > 0.25;
-}
-
-function cleanContextForLLM(text: string): string {
-  const lines = text.split(/\r?\n/);
-  const clean: string[] = [];
-  for (const rawLine of lines) {
-    const stripped = rawLine.trim();
-    if (!stripped) {
-      clean.push('');
-      continue;
-    }
-    if (hasNonEnglishScript(stripped)) continue;
-    if (isTransliteratedHindi(stripped)) continue;
-    if (/^\d+ (GI|THE GAZETTE)$/i.test(stripped)) continue;
-    if (/^\(\d+\)$/.test(stripped)) continue;
-    if (/^xxxGID[HE]xxx$/i.test(stripped)) continue;
-    if (/^(REGD\.|CG-DL|sn\.)/i.test(stripped)) continue;
-    clean.push(rawLine);
-  }
-  return clean.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-}
-
-function partialSimilarity(a: string, b: string): number {
-  const s1 = a.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2);
-  const s2 = b.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2);
-  if (s1.length === 0 || s2.length === 0) return 0;
-  const set2 = new Set(s2);
-  let overlap = 0;
-  for (const w of s1) {
-    if (set2.has(w)) overlap++;
-  }
-  return Math.round((overlap / s1.length) * 100);
-}
-
-function tagFinalContextWithStatus(finalContext: string, draftContext: string): string {
-  if (!draftContext) return finalContext;
-  const draftParas = draftContext.split('---').map((p) => p.trim()).filter((p) => p.length > 40);
-  const finalParas = finalContext.split('---').map((p) => p.trim()).filter((p) => p.length > 40);
-
-  const tagged: string[] = [];
-  for (const fp of finalParas) {
-    if (!fp) continue;
-    let maxSim = 0;
-    for (const dp of draftParas) {
-      const sim = partialSimilarity(fp.slice(0, 250), dp.slice(0, 250));
-      if (sim > maxSim) maxSim = sim;
-    }
-
-    let label = '[NEW in final — valid evidence if it matches the comment\'s request]';
-    if (maxSim >= 85) {
-      label = '[UNCHANGED FROM DRAFT — NOT valid evidence of implementation]';
-    } else if (maxSim >= 50) {
-      label = '[MODIFIED FROM DRAFT — only the NEW portions count as evidence]';
-    }
-    tagged.push(`${label}\n${fp}`);
-  }
-
-  return tagged.length > 0 ? tagged.join('\n\n---\n\n') : finalContext;
-}
-
-function buildDiffSummary(draftContext: string, finalContext: string): string {
-  if (!draftContext || !finalContext) return '';
-  const draftParas = draftContext.split('---').map((p) => p.trim()).filter((p) => p.length > 40);
-  const finalParas = finalContext.split('---').map((p) => p.trim()).filter((p) => p.length > 40);
-
-  const changes: string[] = [];
-  for (const dp of draftParas) {
-    let bestSim = 0;
-    for (const fp of finalParas) {
-      const sim = partialSimilarity(dp.slice(0, 200), fp.slice(0, 200));
-      if (sim > bestSim) bestSim = sim;
-    }
-    const clauseMatch = dp.match(/^(\d+\.\d+|\d+\.)/);
-    const clauseId = clauseMatch ? clauseMatch[1] : 'Clause';
-
-    if (bestSim >= 85) {
-      changes.push(`  Clause ${clauseId}: UNCHANGED in final — do NOT use as evidence`);
-    } else if (bestSim >= 50) {
-      changes.push(`  Clause ${clauseId}: MODIFIED in final (similarity ${bestSim}%) — only changed portion counts`);
-    } else {
-      changes.push(`  Clause ${clauseId}: SIGNIFICANTLY CHANGED or ABSENT in final`);
-    }
-  }
-
-  return changes.length > 0 ? `=== DRAFT vs FINAL DIFF (auto-detected) ===\n${changes.join('\n')}` : '';
-}
-
-function verifyAndLocateEvidence(
-  evidenceQuote: string,
-  rawFinalContext: string,
-  providedParas: string[] = []
-): {
-  evidence_verified: boolean;
-  evidence_match_confidence: number;
-  evidence_paragraph_index?: number;
-  evidence_source_clause?: string;
-  evidence_matched_excerpt: string;
-  provenance?: {
-    source_doc: 'final' | 'draft';
-    paragraph_index: number;
-    clause_heading?: string;
-    exact_match: boolean;
-    match_score: number;
-    text_snippet: string;
-  };
-  hallucination_warning?: string;
-} {
-  const cleanQuote = (evidenceQuote || '')
-    .replace(/^["'“”]+|["'“”]+$/g, '')
-    .trim();
-
-  if (!cleanQuote || cleanQuote.toLowerCase().includes('not found') || cleanQuote.toLowerCase().includes('no adopting provision')) {
-    return {
-      evidence_verified: false,
-      evidence_match_confidence: 0,
-      evidence_matched_excerpt: 'No adopting provision found in final regulation',
-      hallucination_warning: undefined
-    };
-  }
-
-  // Derive paragraphs from provided array or split context
-  const paras = (providedParas && providedParas.length > 0)
-    ? providedParas
-    : rawFinalContext.split(/\n\n+|---/).map(p => p.trim()).filter(p => p.length > 25);
-
-  const normalizeForMatch = (s: string) =>
-    s.toLowerCase().replace(/[\s\r\n\t]+/g, ' ').replace(/[^\w\s]/g, '').trim();
-
-  const normQuote = normalizeForMatch(cleanQuote);
-
-  // 1. Check exact or direct substring match in paragraphs
-  for (let i = 0; i < paras.length; i++) {
-    const para = paras[i];
-    const normPara = normalizeForMatch(para);
-
-    if (normPara.includes(normQuote) || (normQuote.length > 30 && normPara.includes(normQuote.slice(0, 50)))) {
-      // Extract clause header if present
-      const clauseMatch = para.match(/^(?:Regulation|Clause|Section|Annexure|Schedule|\d+\.|\(\d+\))[^:\n.]+/i);
-      const clauseHeading = clauseMatch ? clauseMatch[0].trim() : `Clause / Section ${i + 1}`;
-
-      return {
-        evidence_verified: true,
-        evidence_match_confidence: 100,
-        evidence_paragraph_index: i + 1,
-        evidence_source_clause: clauseHeading,
-        evidence_matched_excerpt: para.slice(0, 300),
-        provenance: {
-          source_doc: 'final',
-          paragraph_index: i + 1,
-          clause_heading: clauseHeading,
-          exact_match: true,
-          match_score: 100,
-          text_snippet: para.slice(0, 250)
-        }
-      };
-    }
-  }
-
-  // 2. High-confidence Token overlap across paragraphs
-  let bestParaIdx = -1;
-  let bestScore = 0;
-  let bestPara = '';
-
-  const quoteWords = normQuote.split(' ').filter(w => w.length > 3);
-  if (quoteWords.length > 0) {
-    for (let i = 0; i < paras.length; i++) {
-      const pWords = new Set(normalizeForMatch(paras[i]).split(' '));
-      let matchCount = 0;
-      for (const qw of quoteWords) {
-        if (pWords.has(qw)) matchCount++;
-      }
-      const score = Math.round((matchCount / quoteWords.length) * 100);
-      if (score > bestScore) {
-        bestScore = score;
-        bestParaIdx = i;
-        bestPara = paras[i];
-      }
-    }
-  }
-
-  if (bestScore >= 60 && bestParaIdx >= 0) {
-    const clauseMatch = bestPara.match(/^(?:Regulation|Clause|Section|Annexure|Schedule|\d+\.|\(\d+\))[^:\n.]+/i);
-    const clauseHeading = clauseMatch ? clauseMatch[0].trim() : `Clause / Section ${bestParaIdx + 1}`;
-
-    return {
-      evidence_verified: true,
-      evidence_match_confidence: bestScore,
-      evidence_paragraph_index: bestParaIdx + 1,
-      evidence_source_clause: clauseHeading,
-      evidence_matched_excerpt: bestPara.slice(0, 300),
-      provenance: {
-        source_doc: 'final',
-        paragraph_index: bestParaIdx + 1,
-        clause_heading: clauseHeading,
-        exact_match: false,
-        match_score: bestScore,
-        text_snippet: bestPara.slice(0, 250)
-      }
-    };
-  }
-
-  // 3. Not found / Hallucination detected
-  return {
-    evidence_verified: false,
-    evidence_match_confidence: bestScore,
-    evidence_matched_excerpt: cleanQuote,
-    hallucination_warning: 'Caution: The cited text was not verified as an exact or substantial match in the Final Gazette document.'
-  };
-}
-
-function normalizeMappingResult(parsed: any, defaultSuggestion = ''): any {
-  const mappings = parsed.mapping_analysis;
-  if (!Array.isArray(mappings) || mappings.length === 0) {
-    return parsed;
-  }
-
-  const validStatuses = new Set(['ACCEPTED', 'PARTIALLY ACCEPTED', 'PARTIALLY_ACCEPTED', 'REJECTED']);
-  const statuses = mappings.map((m: any) => String(m.classification_status || '').toUpperCase());
-  let status = statuses[0] || 'REJECTED';
-  if (!validStatuses.has(status)) status = 'REJECTED';
-  if (status === 'PARTIALLY ACCEPTED') status = 'PARTIALLY_ACCEPTED';
-
-  const implemented: string[] = [];
-  const notImplemented: string[] = [];
-  const clauses: string[] = [];
-  const reasons: string[] = [];
-  const evidences: string[] = [];
-
-  for (const item of mappings) {
-    if (!item || typeof item !== 'object') continue;
-    const req = String(item.exact_quote_from_comment || '').trim();
-    const st = String(item.classification_status || '').toUpperCase();
-    if (st.includes('ACCEPTED') && !st.includes('PARTIALLY')) {
-      if (req) implemented.push(req);
-    } else {
-      if (req) notImplemented.push(req);
-    }
-    if (item.clause_id) clauses.push(String(item.clause_id));
-    if (item.determinism_proof) reasons.push(String(item.determinism_proof));
-    if (item.exact_quote_from_final_gazette) evidences.push(String(item.exact_quote_from_final_gazette));
-  }
-
-  return {
-    classification: status,
-    draft_position: clauses.join('; ') || 'Identified in baseline draft context',
-    requested_change: mappings.map((m: any) => m.exact_quote_from_comment).filter(Boolean).join(' ') || defaultSuggestion,
-    final_position: evidences.join(' ') || 'Not explicitly modified in final text',
-    implemented_requests: implemented,
-    not_implemented_requests: notImplemented,
-    reasoning: reasons.join(' ') || 'Analysis completed according to 4-question test criteria.',
-    evidence_in_final: evidences.join(' ') || 'Not found in final regulation',
-    referenced_clause: clauses.join(', ') || undefined,
-  };
-}
 
 // ─────────────────────────────────────────────
 // API ROUTES
@@ -398,39 +91,35 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Universal Document Text Extraction (supports PDF, TXT, MD, CSV, JSON)
+// Extract text from supported, text-bearing document formats.
+// Scanned/image-only PDFs require OCR, which is not enabled in this version.
 async function extractDocumentBuffer(buffer: Buffer, originalName: string) {
-  const isPdf =
-    originalName.toLowerCase().endsWith('.pdf') ||
-    (buffer.length >= 4 && buffer.slice(0, 4).toString() === '%PDF');
-
+  const ext = path.extname(originalName).toLowerCase();
   let fullText = '';
   let pageCount = 1;
-
-  if (isPdf) {
+  if (ext === '.pdf' || (buffer.length >= 4 && buffer.slice(0, 4).toString() === '%PDF')) {
     const data = await pdfParse(buffer);
     fullText = data.text || '';
     pageCount = data.numpages || 1;
-  } else {
+    if (!fullText.trim()) throw new Error('This PDF contains no selectable text. It may be scanned or image-only; OCR is not enabled yet.');
+  } else if (ext === '.docx') {
+    const data = await mammoth.extractRawText({ buffer });
+    fullText = data.value || '';
+  } else if (ext === '.xlsx' || ext === '.xls') {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    fullText = workbook.SheetNames.map((name) => 'Sheet: ' + name + '\n' + XLSX.utils.sheet_to_csv(workbook.Sheets[name], { blankrows: false })).join('\n\n');
+  } else if (['.txt', '.md', '.csv', '.json', '.xml'].includes(ext)) {
     fullText = buffer.toString('utf-8');
-    pageCount = 1;
+  } else if (ext === '.html' || ext === '.htm') {
+    fullText = buffer.toString('utf-8').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<\/(p|div|h[1-6]|li|tr|section|article)>/gi, '\n').replace(/<[^>]+>/g, ' ');
+  } else {
+    throw new Error('Unsupported file type ' + (ext || 'unknown') + '. Supported formats: PDF, DOCX, XLSX, XLS, TXT, MD, CSV, JSON, XML, and HTML.');
   }
-
-  const paragraphs = fullText
-    .replace(/\r\n/g, '\n')
-    .split(/\n\n+/)
-    .map(p => p.trim())
-    .filter(p => p.length > 25);
-
-  return {
-    fileName: originalName,
-    pageCount,
-    textLength: fullText.length,
-    fullText,
-    paragraphs,
-  };
+  fullText = fullText.replace(/\u0000/g, '').replace(/\r\n/g, '\n').trim();
+  if (!fullText) throw new Error('No readable text was extracted from this file.');
+  const paragraphs = fullText.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  return { fileName: originalName, pageCount, textLength: fullText.length, fullText, paragraphs };
 }
-
 // PDF Text Extraction Route (backward-compatible)
 app.post('/api/extract-pdf', upload.single('file'), async (req, res) => {
   try {
@@ -441,7 +130,7 @@ app.post('/api/extract-pdf', upload.single('file'), async (req, res) => {
     res.json(result);
   } catch (error: any) {
     console.error('Error parsing document:', error);
-    res.status(500).json({ error: 'Failed to extract text from document: ' + error.message });
+    res.status(422).json({ error: error.message || 'Failed to extract document.' });
   }
 });
 
@@ -455,7 +144,7 @@ app.post('/api/extract-document', upload.single('file'), async (req, res) => {
     res.json(result);
   } catch (error: any) {
     console.error('Error parsing document:', error);
-    res.status(500).json({ error: 'Failed to extract document: ' + error.message });
+    res.status(422).json({ error: error.message || 'Failed to extract document.' });
   }
 });
 
@@ -520,32 +209,45 @@ app.post('/api/analyze-comment', async (req, res) => {
       return res.status(400).json({ error: 'Missing comment suggestion' });
     }
 
+    const activeSuggestion: string = comment.suggestion || comment.body;
+    const commentNumber = comment.number || 1;
+    const commentTitle = comment.title || 'Comment ' + commentNumber;
+
     const cleanedDraft = cleanContextForLLM(draftContext || '');
     const cleanedFinal = cleanContextForLLM(finalContext || '');
-    const taggedFinal = tagFinalContextWithStatus(cleanedFinal, cleanedDraft);
-    const diffSummary = buildDiffSummary(cleanedDraft, cleanedFinal);
+
+    // Short documents are sent to the model in full. Long documents go through BM25 retrieval
+    // so the prompt only contains the clauses most likely to matter for this comment.
+    const queries = buildQueries(activeSuggestion, comment.draft_quote || '', comment.body || '');
+    const finalCtx = selectContext(cleanedFinal, queries);
+    const draftCtx = selectContext(cleanedDraft, queries, { maxChars: 20000 });
+    const truncationWarning =
+      finalCtx.mode === 'truncated'
+        ? `[CONTEXT WARNING] The final regulation is long and no relevant clauses were found by retrieval, so only its first ${finalCtx.text.length} characters were analysed.`
+        : undefined;
 
     const ai = getGeminiClient();
+    let modelError: string | null = null;
 
     if (ai) {
       const userPrompt = `
-=== DRAFT REGULATION CONTEXT (Reference only to clarify background clause) ===
-${cleanedDraft || 'No draft excerpts provided.'}
+=== DRAFT DOCUMENT CONTEXT (baseline/background only) ===
+${draftCtx.text || 'No draft excerpts provided.'}
 
-=== STAKEHOLDER COMMENT FROM comments.pdf (Comment #${comment.number || 1}) ===
+=== STAKEHOLDER COMMENT (Comment #${commentNumber}) ===
 Title: ${comment.title || 'Regulatory Comment'}
 Draft Clause Reference: ${comment.draft_quote || 'N/A'}
 Stakeholder Suggestion / Recommendation to match against final regulation:
-"${comment.suggestion || comment.body}"
+"${activeSuggestion}"
 
-=== STATEMENTS IN FINAL REGULATION (final.pdf) ===
-${cleanedFinal || 'No final regulation text provided.'}
+=== TEXT FROM FINAL DOCUMENT${finalCtx.mode === 'retrieved' ? ' — most relevant clauses only' : ''} ===
+${finalCtx.text || 'No final regulation text provided.'}
 
 TASK:
-Search the statements in final.pdf to evaluate if the semantic meaning of the stakeholder comment from comments.pdf was implemented:
+Compare the stakeholder request with the final document, using the draft only as background. Evaluate meaning, scope, conditions, exceptions, dates, thresholds, and every material part of the request:
 - Full semantic match of all conditions/recommendations in final.pdf -> ACCEPTED (evidence = exact statement in final.pdf)
 - Partial statement / subset of conditions implemented in final.pdf -> PARTIALLY ACCEPTED (evidence = exact statement in final.pdf)
-- Not present / no matching statement in final.pdf -> REJECTED (evidence = "No adopting provision found in final regulation")
+- Not present / no matching statement in final.pdf -> REJECTED (evidence = "${NO_ADOPTING_PROVISION}")
 
 Output strictly the minified JSON object conforming to the required schema.`;
 
@@ -564,110 +266,85 @@ Output strictly the minified JSON object conforming to the required schema.`;
         const rawText = response.text || '{}';
         const cleanJson = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         const parsed = JSON.parse(cleanJson);
-        const normalized = normalizeMappingResult(parsed, comment.suggestion || comment.body);
+        const normalized = normalizeMappingResult(parsed, activeSuggestion);
 
-        // Grounding Verification & Evidence Provenance Locator
-        const verification = verifyAndLocateEvidence(
-          normalized.evidence_in_final,
-          cleanedFinal,
-          finalParagraphs
-        );
+        // Grounding check: every quote the model cited must exist in the FULL cleaned final text
+        // (not only in the retrieved clauses), and an ungrounded Accepted/Partial verdict is downgraded.
+        const verification = verifyEvidenceQuotes(normalized.evidence_quotes, cleanedFinal, finalParagraphs);
+        const guard = applyGroundingGuardrail(normalized.classification, verification);
 
-        let finalClassification = normalized.classification || 'REJECTED';
-        let reasoning = normalized.reasoning || 'Deterministic 4-question test completed.';
-        let hallucinationWarning = verification.hallucination_warning;
-
-        // Anti-hallucination guardrail: if model claims ACCEPTED/PARTIALLY_ACCEPTED but cited evidence does not exist
-        if (
-          (finalClassification === 'ACCEPTED' || finalClassification === 'PARTIALLY_ACCEPTED') &&
-          !verification.evidence_verified &&
-          verification.evidence_match_confidence < 30
-        ) {
-          hallucinationWarning = `[GROUNDING WARNING] Cited evidence was not found verbatim in the uploaded Final Gazette. Status downgraded to avoid ungrounded acceptance.`;
-          finalClassification = 'REJECTED';
-          reasoning += ` [Verification Notice: The model cited text not located in the uploaded Final Gazette notification.]`;
+        let reasoning = normalized.reasoning;
+        if (guard.downgraded) {
+          reasoning += ' [Verification Notice: the cited evidence could not be located in the uploaded final regulation.]';
         }
+        const warning =
+          [guard.warning || verification.hallucination_warning, truncationWarning].filter(Boolean).join(' ') || undefined;
 
         return res.json({
-          comment_number: comment.number || 1,
-          comment_title: comment.title || 'Comment ' + (comment.number || 1),
-          classification: finalClassification,
+          comment_number: commentNumber,
+          comment_title: commentTitle,
+          classification: guard.verdict,
           draft_position: normalized.draft_position || 'Not specified in draft',
-          requested_change: normalized.requested_change || comment.suggestion || comment.body,
+          requested_change: normalized.requested_change || activeSuggestion,
           final_position: normalized.final_position || 'Not addressed in final',
-          implemented_requests: normalized.implemented_requests || [],
-          not_implemented_requests: normalized.not_implemented_requests || [],
+          implemented_requests: normalized.implemented_requests,
+          not_implemented_requests: normalized.not_implemented_requests,
           reasoning,
-          evidence_in_final: normalized.evidence_in_final || 'Not found in final regulation',
-          referenced_clause: verification.evidence_source_clause || normalized.referenced_clause || ('Clause ' + (comment.number || 1)),
+          evidence_in_final: normalized.evidence_in_final,
+          referenced_clause: verification.evidence_source_clause || normalized.referenced_clause || ('Clause ' + commentNumber),
           file_set: comment.file_set || 'custom',
 
-          // Anti-Hallucination & Provenance metadata
+          // How this result was produced
+          analysis_mode: 'gemini',
+          context_mode: finalCtx.mode,
+
+          // Evidence grounding & provenance
           evidence_verified: verification.evidence_verified,
           evidence_match_confidence: verification.evidence_match_confidence,
           evidence_paragraph_index: verification.evidence_paragraph_index,
           evidence_source_clause: verification.evidence_source_clause,
           evidence_matched_excerpt: verification.evidence_matched_excerpt,
           provenance: verification.provenance,
-          hallucination_warning: hallucinationWarning,
+          hallucination_warning: warning,
         });
       } catch (geminiError: any) {
-        console.warn('Gemini API call failed, using heuristic semantic analysis fallback:', geminiError);
+        modelError = geminiError?.message || String(geminiError);
+        console.warn('Gemini analysis failed, using keyword heuristic fallback:', modelError);
       }
     }
 
-    // Heuristic Fallback Analysis (when API key is absent or rate limited)
-    const suggestionLower = (comment.suggestion || comment.body || '').toLowerCase();
-    const finalLower = (cleanedFinal || '').toLowerCase();
-
-    // Check for key phrase presence
-    const keywords = suggestionLower
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter((w: string) => w.length > 4);
-
-    let matchCount = 0;
-    for (const kw of keywords) {
-      if (finalLower.includes(kw)) matchCount++;
-    }
-
-    const matchRatio = keywords.length > 0 ? matchCount / keywords.length : 0;
-    let classification: 'ACCEPTED' | 'PARTIALLY_ACCEPTED' | 'REJECTED' = 'REJECTED';
-
-    if (matchRatio > 0.6) {
-      classification = 'ACCEPTED';
-    } else if (matchRatio > 0.3) {
-      classification = 'PARTIALLY_ACCEPTED';
-    }
-
-    const activeSuggestion = comment.suggestion || comment.body;
-    const rawExcerpt = cleanedFinal ? cleanedFinal.slice(0, 250) + '...' : 'Evidence not extracted.';
-    const verification = verifyAndLocateEvidence(rawExcerpt, cleanedFinal, finalParagraphs);
+    // Keyword-overlap fallback (no API key, or the model call failed). It cites no evidence,
+    // so nothing is marked as verified.
+    const { classification, matchRatio } = heuristicClassify(activeSuggestion, cleanedFinal);
+    const pct = Math.round(matchRatio * 100);
+    const why = modelError ? `model call failed: ${modelError.slice(0, 120)}` : 'no Gemini API key configured';
 
     return res.json({
-      comment_number: comment.number || 1,
-      comment_title: comment.title || 'Comment ' + (comment.number || 1),
-      classification,
+      comment_number: commentNumber,
+      comment_title: commentTitle,
+      classification: classification as Verdict,
       draft_position: comment.draft_quote ? `Draft reference: ${comment.draft_quote}` : 'Baseline draft provisions apply.',
       requested_change: activeSuggestion,
-      final_position: classification === 'REJECTED'
-        ? 'Final gazette notification retained draft baseline without adopting requested modification.'
-        : 'Final gazette incorporates language aligning with the stakeholder recommendation.',
+      final_position:
+        classification === 'REJECTED'
+          ? 'Few keywords from the comment appear in the final text.'
+          : 'Many keywords from the comment appear in the final text.',
       implemented_requests: classification !== 'REJECTED' ? [activeSuggestion.slice(0, 100)] : [],
       not_implemented_requests: classification === 'REJECTED' ? [activeSuggestion.slice(0, 100)] : [],
-      reasoning: `Deterministic verification via semantic context mapping (${Math.round(matchRatio * 100)}% keyword convergence). 4-Question Test: ${classification === 'ACCEPTED' ? 'Subject, suggestion, parameter, and outcome checks passed.' : classification === 'PARTIALLY_ACCEPTED' ? 'Subject matched but parameter conditions narrower than proposed.' : 'Checks failed: Draft text retained or requested outcome omitted.'}`,
-      evidence_in_final: rawExcerpt,
-      referenced_clause: verification.evidence_source_clause || ('Clause ' + (comment.number || 1)),
-      file_set: 'custom',
+      reasoning: `[Heuristic fallback, no AI model used: ${why}] ${pct}% of the comment's keywords (words over 4 letters) appear in the final text. This is a rough keyword check, not a semantic comparison.`,
+      evidence_in_final: 'Not available (heuristic fallback cites no evidence)',
+      referenced_clause: 'Clause ' + commentNumber,
+      file_set: comment.file_set || 'custom',
 
-      // Anti-Hallucination & Provenance metadata
-      evidence_verified: verification.evidence_verified,
-      evidence_match_confidence: verification.evidence_match_confidence,
-      evidence_paragraph_index: verification.evidence_paragraph_index,
-      evidence_source_clause: verification.evidence_source_clause,
-      evidence_matched_excerpt: verification.evidence_matched_excerpt,
-      provenance: verification.provenance,
-      hallucination_warning: verification.hallucination_warning,
+      analysis_mode: 'heuristic',
+      context_mode: finalCtx.mode,
+
+      evidence_verified: false,
+      evidence_match_confidence: 0,
+      evidence_matched_excerpt: '',
+      hallucination_warning: ['Heuristic fallback: no model was used and no evidence was cited.', truncationWarning]
+        .filter(Boolean)
+        .join(' '),
     });
 
   } catch (error: any) {
@@ -685,7 +362,7 @@ app.post('/api/export-excel', (req, res) => {
 
     // 1. Summary Sheet
     const summaryData = [
-      ['CERC Comment Comparator — Analysis Report'],
+      ['Regulatory Comment Comparator — Analysis Report'],
       ['Dataset / Case Study', datasetName || 'Regulatory Comparison'],
       ['Generated Date', new Date().toLocaleString()],
       [],
@@ -705,7 +382,8 @@ app.post('/api/export-excel', (req, res) => {
       'Title': r.comment_title,
       'Classification': r.classification,
       'Referenced Clause': r.referenced_clause || 'N/A',
-      'Evidence Verified': r.evidence_verified ? `YES (${r.evidence_match_confidence || 100}% match)` : 'UNVERIFIED',
+      'Analysis Mode': r.analysis_mode === 'heuristic' ? 'Keyword heuristic (no AI model)' : 'Gemini',
+      'Evidence Verified': r.evidence_verified ? `YES (${r.evidence_match_confidence ?? 100}% match)` : 'UNVERIFIED',
       'Gazette Location': r.evidence_paragraph_index ? `Paragraph #${r.evidence_paragraph_index}` : 'N/A',
       'Draft Position': r.draft_position,
       'Requested Change': r.requested_change,
@@ -723,7 +401,7 @@ app.post('/api/export-excel', (req, res) => {
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=cerc_comment_analysis_${Date.now()}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=regulatory_comment_analysis_${Date.now()}.xlsx`);
     res.send(buffer);
   } catch (error: any) {
     console.error('Error generating Excel:', error);
@@ -751,7 +429,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`CERC Comment Comparator server running on http://0.0.0.0:${PORT}`);
+    console.log(`Regulatory Comment Comparator server running on http://0.0.0.0:${PORT}`);
   });
 }
 

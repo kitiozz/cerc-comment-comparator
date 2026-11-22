@@ -30,7 +30,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cerc_results_${Date.now()}.json`;
+    a.download = `regulatory_results_${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -54,7 +54,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `cerc_results_${Date.now()}.xlsx`;
+      a.download = `regulatory_results_${Date.now()}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -67,7 +67,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
   };
 
   const handleCopyMarkdown = () => {
-    let md = `# CERC Comment Comparator — Analysis Report\n`;
+    let md = `# Regulatory Comment Comparator — Analysis Report\n`;
     md += `**Dataset:** ${datasetName}  \n`;
     md += `**Date:** ${new Date().toLocaleDateString()}  \n\n`;
     md += `## Executive Summary\n`;

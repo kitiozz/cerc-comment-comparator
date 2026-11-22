@@ -34,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold text-slate-900 leading-none">
-                  CERC Comment Comparator
+                  Regulatory Comment Comparator
                 </h1>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/60">
                   v2.0

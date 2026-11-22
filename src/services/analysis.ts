@@ -11,76 +11,17 @@ export const NO_ADOPTING_PROVISION = 'No adopting provision found in final regul
 
 // ─────────────────────────────────────────────
 // TEXT CLEANING
-// Indian gazettes are bilingual (English + Hindi). Hindi text often extracts as noise,
-// so we keep English lines only.
+// Keep document language and wording intact. Only normalize transport artefacts;
+// language-specific filtering can silently remove legally material provisions.
 // ─────────────────────────────────────────────
 
-const NON_ENGLISH_RANGES: [number, number][] = [
-  [0x0600, 0x06ff], // Arabic
-  [0x0900, 0x097f], // Devanagari (Hindi)
-  [0x0980, 0x09ff], // Bengali
-  [0x0a00, 0x0a7f], // Gurmukhi
-  [0x0a80, 0x0aff], // Gujarati
-  [0x0b00, 0x0b7f], // Oriya
-  [0x0b80, 0x0bff], // Tamil
-  [0x0c00, 0x0c7f], // Telugu
-  [0x0c80, 0x0cff], // Kannada
-  [0x0d00, 0x0d7f], // Malayalam
-  [0x4e00, 0x9fff], // CJK
-];
-
-function hasNonEnglishScript(text: string): boolean {
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    for (const [start, end] of NON_ENGLISH_RANGES) {
-      if (code >= start && code <= end) return true;
-    }
-  }
-  return false;
-}
-
-// Legacy Hindi fonts (e.g. Kruti Dev) extract as short Latin-looking tokens like "vk", "gs", "dk".
-const HINDI_ROMAN_TOKENS = new Set([
-  'vk', 'gs', 'dk', 'dks', 'esa', 'ds', 'dh', 'ij', 'ls', 'vksj',
-  'gksa', ';g', ';s', 'fd', 'tks', 'tc', 'rks', 'uk', 'gha', 'hkh',
-  'ml', 'bl', 'bls', 'mls', ';k', 'rfkk', 'lhkh', 'dqn', 'cgqr',
-  'tkrk', 'gksrk', 'djrk', 'djrs', 'djuk', 'jgk', 'jgh', 'jgs',
-  'lkfk', 'igys', 'vkt', 'dy', 'vc', 'ugha', 'gka', 'lacakh',
-  'vkjbzlc', 'vkjihvks', 'vkjlhvks', 'ohihh', 'lhbzvklh',
-  'forqr', 'åtzk', 'vfkfu;e', 'fofu;e', 'vuqcak', 'mihkkssä',
-  'vkkssx', 'ljdkj', 'çek.ki=', 'vuqikyu', 'fofufnz"v',
-  'uohdj.kh;', 'vkjbzth,l', 'çkir', 'varj.k', 'mi;ksx',
-]);
-
-function isTransliteratedHindi(line: string): boolean {
-  const words = line.trim().toLowerCase().split(/\s+/);
-  if (words.length === 0) return false;
-  let count = 0;
-  for (const w of words) {
-    const clean = w.replace(/[.,;:"']/g, '');
-    if (HINDI_ROMAN_TOKENS.has(clean)) count++;
-  }
-  return words.length >= 3 && count / words.length > 0.25;
-}
-
 export function cleanContextForLLM(text: string): string {
-  const lines = text.split(/\r?\n/);
-  const clean: string[] = [];
-  for (const rawLine of lines) {
-    const stripped = rawLine.trim();
-    if (!stripped) {
-      clean.push('');
-      continue;
-    }
-    if (hasNonEnglishScript(stripped)) continue;
-    if (isTransliteratedHindi(stripped)) continue;
-    if (/^\d+ (GI|THE GAZETTE)$/i.test(stripped)) continue;
-    if (/^\(\d+\)$/.test(stripped)) continue;
-    if (/^xxxGID[HE]xxx$/i.test(stripped)) continue;
-    if (/^(REGD\.|CG-DL|sn\.)/i.test(stripped)) continue;
-    clean.push(rawLine);
-  }
-  return clean.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return (text || '')
+    .replace(/\\u0000/g, '')
+    .replace(/\\r\\n?/g, '\\n')
+    .replace(/[ \\t]+\\n/g, '\\n')
+    .replace(/\\n{3,}/g, '\\n\\n')
+    .trim();
 }
 
 // ─────────────────────────────────────────────

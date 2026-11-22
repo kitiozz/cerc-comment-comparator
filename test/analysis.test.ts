@@ -19,22 +19,19 @@ const FINAL = [
 ].join('\n\n');
 
 // ── cleaning ────────────────────────────────────────────────
-test('cleanContextForLLM keeps English and drops Hindi script, garbled Hindi and gazette headers', () => {
+test('cleanContextForLLM preserves multilingual text and only normalizes whitespace/transport artefacts', () => {
   const raw = [
-    'The deviation charge shall be computed as specified.',
+    'The rule applies to all applicants.',
     'विद्युत विनियामक आयोग अधिसूचना',
-    'vk gs dk ds ml bl vkt dy', // legacy-font Hindi that extracts as Latin letters
-    '12 THE GAZETTE',
-    'REGD. NO. D. L.-33004/99',
-    'Regulation 5 applies to all sellers.',
-  ].join('\n');
+    'Regla aplicable a todos los solicitantes.',
+    '  Section 5 applies.  ',
+  ].join('\\n') + '\\u0000';
   const out = cleanContextForLLM(raw);
-  assert.match(out, /deviation charge/);
-  assert.match(out, /Regulation 5 applies/);
-  assert.doesNotMatch(out, /विद्युत/);
-  assert.doesNotMatch(out, /vk gs dk/);
-  assert.doesNotMatch(out, /THE GAZETTE/);
-  assert.doesNotMatch(out, /REGD\./);
+  assert.match(out, /The rule applies/);
+  assert.match(out, /विद्युत/);
+  assert.match(out, /Regla aplicable/);
+  assert.match(out, /Section 5 applies/);
+  assert.doesNotMatch(out, /\\u0000/);
 });
 
 // ── evidence verification ───────────────────────────────────

@@ -17,10 +17,10 @@ export const NO_ADOPTING_PROVISION = 'No adopting provision found in final regul
 
 export function cleanContextForLLM(text: string): string {
   return (text || '')
-    .replace(/\\u0000/g, '')
-    .replace(/\\r\\n?/g, '\\n')
-    .replace(/[ \\t]+\\n/g, '\\n')
-    .replace(/\\n{3,}/g, '\\n\\n')
+    .replace(/\u0000/g, '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
